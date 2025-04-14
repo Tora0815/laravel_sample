@@ -16,5 +16,28 @@ class ArticleController extends Controller
     {
         return view('articles.create');
     }
+    public function edit(Article $article)
+    {
+        return view('articles.edit', compact('article'));
+    }
+    public function update(Request $request, Article $article)
+    {
+        $request->validate(
+            [
+            'title' => 'required|max:255',
+            'body' => 'required',
+            ]
+        );
+
+        $article->update(
+            [
+            'title' => $request->input('title'),
+            'body' => $request->input('body'),
+            ]
+        );
+
+        return redirect('/articles');
+    }
+
 
 }

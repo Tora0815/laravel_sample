@@ -9,7 +9,13 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @foreach ($articles as $article)
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 mb-4">
-                    <h3 class="text-lg font-bold">{{ $article->title }}</h3>
+                    <h3 class="text-lg font-bold">
+                        <a href="{{ url("/articles/{$article->id}/edit") }}" class="text-blue-500 hover:underline">
+                            {{ $article->title }}
+                        </a>
+                    </h3>
+
+
                     <p>{{ $article->body }}</p>
                 </div>
             @endforeach
