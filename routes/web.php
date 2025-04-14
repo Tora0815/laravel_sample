@@ -13,6 +13,7 @@ Route::post('/articles', [ArticleController::class, 'store']);
 Route::get('/articles/{article}/edit', [ArticleController::class, 'edit']);
 Route::put('/articles/{article}', [ArticleController::class, 'update']);
 Route::delete('/articles/{article}', [ArticleController::class, 'destroy']);
+Route::get('/articles/{article}', [ArticleController::class, 'show']);
 
 // ===== 認証済みユーザーのみアクセス可能なルート =====
 Route::middleware(['auth', 'verified'])->group(
