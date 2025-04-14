@@ -7,6 +7,7 @@ use App\Http\Controllers\ArticleController;
 Route::get('/articles', [ArticleController::class, 'index']);
 Route::get('/articles/create', [ArticleController::class, 'create']);
 Route::put('/articles/{article}', [ArticleController::class, 'update']);
+Route::delete('/articles/{article}', [ArticleController::class, 'destroy']);
 
 
 Route::get(

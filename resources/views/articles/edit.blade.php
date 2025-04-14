@@ -26,5 +26,11 @@
 
             <a href="/articles" class="ml-4 text-gray-500 hover:underline">戻る</a>
         </form>
+        <form method="POST" action="/articles/{{ $article->id }}" onsubmit="return confirm('本当に削除しますか？')">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded mt-4">削除</button>
+        </form>
+
     </div>
 </x-app-layout>
