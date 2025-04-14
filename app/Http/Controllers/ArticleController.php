@@ -12,4 +12,9 @@ class ArticleController extends Controller
         $articles = Article::latest()->get();
         return view('articles.index', compact('articles'));
     }
+    public function create()
+    {
+        return view('articles.create');
+    }
+
 }
