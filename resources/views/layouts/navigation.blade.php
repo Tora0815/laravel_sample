@@ -62,13 +62,9 @@
                     {{-- ドロップダウンメニュー本体 --}}
                     <x-slot name="content">
                         {{-- プロフィール編集 --}}
-                        <form method="POST" action="{{ route('profile.edit') }}">
-                            @csrf
-                            <x-dropdown-link :href="route('profile.edit')"
-                                onclick="event.preventDefault(); this.closest('form').submit();">
-                                {{ __('プロフィール') }}
-                            </x-dropdown-link>
-                        </form>
+                        <x-dropdown-link :href="route('profile.edit')">
+                            {{ __('プロフィール') }}
+                        </x-dropdown-link>
                         {{-- ログアウト --}}
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -120,14 +116,10 @@
                 <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
             </div>
             <div class="mt-3 space-y-1">
-                {{-- プロフィール --}}
-                <form method="POST" action="{{ route('profile.edit') }}">
-                    @csrf
-                    <x-responsive-nav-link :href="route('profile.edit')"
-                        onclick="event.preventDefault(); this.closest('form').submit();">
-                        {{ __('プロフィール') }}
-                    </x-responsive-nav-link>
-                </form>
+                {{-- モバイルメニュー内のプロフィール --}}
+                <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.edit')">
+                    {{ __('プロフィール') }}
+                </x-responsive-nav-link>
                 {{-- ログアウト --}}
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
