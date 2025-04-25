@@ -1,90 +1,57 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+/**
+ * app/Models/Profile.php
+ * ─────────────────────────────────────────────
+ * ユーザーの拡張プロフィール情報を管理する Eloquent モデル
+ *
+ * ・users テーブルの追加情報（郵便番号・住所・電話番号・備考など）を扱う
+ * ・MembersController や ProfileController から呼び出して利用
+ * ・fillable による一括代入（Mass Assignment）を許可
+ * ・必要に応じてリレーション定義も追加
+ */
 
-class CreateProfilesTable extends Migration
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use App\Models\User; // users テーブルのリレーション定義用
+
+class Profile extends Model
 {
     /**
-     * Run the migrations.
-     *
-     * @return void
+     * 対応するテーブル名
+     * デフォルトではクラス名のスネークケース複数形 ("profiles") を使用します
      */
-    public function up()
-    {
-        Schema::create(
-            'profiles', function (Blueprint $table) {
-                // ───────────────────────────────────────────
-                // 主キーID（自動インクリメント）
-                // ───────────────────────────────────────────
-                $table->id();
-
-                // ───────────────────────────────────────────
-                // ユーザーID：users テーブルの id を参照
-                // → unique() で一意、comment() でカラムの用途を明示
-                // ───────────────────────────────────────────
-                $table->unsignedBigInteger('u_id')
-                    ->unique()
-                    ->comment('ユーザー ID');
-
-                // ───────────────────────────────────────────
-                // 郵便番号・住所・電話番号・備考など
-                // nullable() で「初回未登録時にも対応」
-                // comment() で管理者・チーム間の認識ズレ防止
-                // ───────────────────────────────────────────
-                $table->string('yubin')
-                    ->nullable()
-                    ->comment('郵便番号');
-
-                $table->string('jusho1')
-                    ->nullable()
-                    ->comment('住所1');
-
-                $table->string('jusho2')
-                    ->nullable()
-                    ->comment('住所2');
-
-                $table->string('jusho3')
-                    ->nullable()
-                    ->comment('住所3');
-
-                $table->string('tel')
-                    ->nullable()
-                    ->comment('電話番号');
-
-                $table->text('biko')
-                    ->nullable()
-                    ->comment('備考');
-
-                // ───────────────────────────────────────────
-                // フラグ類：後々のステータス管理や権限制御用
-                // default() で未指定時の挙動を確実化
-                // ───────────────────────────────────────────
-                $table->integer('type_flg')
-                    ->default(0)
-                    ->comment('タイプフラグ');
-
-                $table->integer('kanri_flg')
-                    ->default(0)
-                    ->comment('管理フラグ');
-
-                // ───────────────────────────────────────────
-                // created_at / updated_at
-                // ───────────────────────────────────────────
-                $table->timestamps();
-            }
-        );
-    }
+    // protected $table = 'profiles';
 
     /**
-     * Reverse the migrations.
-     *
-     * @return void
+     * 一括代入を許可するカラム
+     * ・u_id        : users.id を参照する外部キー
+     * ・yubin       : 郵便番号
+     * ・jusho1～3   : 住所（都道府県、市区町村・番地、建物名）
+     * ・tel         : 電話番号
+     * ・biko        : 備考（任意入力）
+     * ・type_flg    : タイプフラグ（将来のステータス管理用）
+     * ・kanri_flg   : 管理フラグ（将来の権限管理用）
      */
-    public function down()
+    protected $fillable = [
+        'u_id',
+        'yubin',
+        'jusho1',
+        'jusho2',
+        'jusho3',
+        'tel',
+        'biko',
+        'type_flg',
+        'kanri_flg',
+    ];
+
+    /**
+     * users テーブルとのリレーション（多対１：belongsTo）
+     * このプロフィール情報を所有するユーザーを取得
+     */
+    public function user()
     {
-        // profiles テーブルを削除
-        Schema::dropIfExists('profiles');
+        return $this->belongsTo(User::class, 'u_id');
     }
 }
