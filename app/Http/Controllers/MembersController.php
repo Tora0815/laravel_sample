@@ -10,27 +10,22 @@ use App\Models\Profile;
 class MembersController extends Controller
 {
     /**
-<<<<<<< HEAD
      * ユーザープロフィールの表示
-=======
      * プロフィール編集画面の表示（GET /profile）
      *
      * ・ログイン中のユーザーIDを取得
      * ・Users テーブルから基本情報を取得
      * ・Profiles テーブルから追加情報を取得
      * ・users.profile ビューへ渡す
->>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
      */
     public function modify()
     {
-<<<<<<< HEAD
         // ログイン中ユーザーIDを強制取得
         $u_id = auth()->id();
 
         $master_data = User::find($u_id);
         $sub_data = Profile::where('u_id', $u_id)->get();
 
-=======
         // 認証済みユーザーのIDを取得（セキュア）
         $u_id = Auth::id();
 
@@ -41,12 +36,10 @@ class MembersController extends Controller
         $sub_data = Profile::where('u_id', $u_id)->get();
 
         // 編集画面へデータを渡してレンダリング
->>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
         return view('users.profile', compact('master_data', 'sub_data'));
     }
 
     /**
-<<<<<<< HEAD
      * ユーザープロフィールの更新
      */
     public function userChange(Request $request)
@@ -75,7 +68,6 @@ class MembersController extends Controller
         }
 
         return redirect('dashboard');
-=======
      * プロフィール更新処理（PATCH /profile）
      *
      * ・フォーム送信された情報を Profiles に保存（更新 or 新規作成）
@@ -106,6 +98,5 @@ class MembersController extends Controller
 
         // 更新完了後はダッシュボードへリダイレクト
         return redirect()->route('dashboard');
->>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
     }
 }

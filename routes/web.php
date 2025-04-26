@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-<<<<<<< HEAD
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\UserPicsController;
 use App\Http\Controllers\MembersController;
@@ -37,7 +36,6 @@ use App\Http\Controllers\MembersController;
 // --------------------------------------------
 Route::get('/', [PageController::class, 'top'])->name('index');
 
-<<<<<<< HEAD
 // --------------------------------------------
 // 静的ページ（About、個人情報、問い合わせ）
 // --------------------------------------------
@@ -117,7 +115,6 @@ Route::post('/save_title', [UserPicsController::class, 'savetitle'])->middleware
 // Breeze認証ルート（ログイン・登録・パスワードリセットなど）
 // --------------------------------------------
 require __DIR__.'/auth.php';
-=======
 // ===== 認証済みユーザーのみアクセス可能なルート =====
 Route::middleware(['auth', 'verified'])->group(
     function () {
@@ -147,4 +144,3 @@ Route::middleware(['auth', 'verified'])->group(
 
 // ===== Breeze の認証ルート自動読み込み（ログイン／登録など） =====
 require __DIR__ . '/auth.php';
->>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
