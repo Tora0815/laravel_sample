@@ -5,68 +5,102 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\UserPicsController;
 use App\Http\Controllers\MembersController;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-| Here is where you can register web routes for your application.
-| These routes are loaded by the RouteServiceProvider within a group
-| which contains the "web" middleware group. Now create something great!
-*/
+/**
+ * --------------------------------------------
+ * Webルート設定ファイル
+ * --------------------------------------------
+ *
+ * ・このファイルは、主に画面表示やデータ通信に関するルートを管理します。
+ * ・認証（auth）ミドルウェア適用済みルートもここに記載します。
+ * ・Breeze認証関連ルートは、最後に auth.php を読み込んでいます。
+ *
+ * 注意：
+ * - GET/POST/PATCHの使い分けを正しく行う
+ * - 名前付きルート（->name()）はBladeテンプレートから参照されるため必須
+ * - 静的ページルート（about/kojin/inquiry）はfunction()で対応
+ */
 
-// トップページ（みんなのアルバム）
+// --------------------------------------------
+// トップページ（みんなのアルバム一覧）
+// --------------------------------------------
 Route::get('/', [PageController::class, 'top'])->name('index');
 
-// 静的ページ（個人情報・お問い合わせ）
+// --------------------------------------------
+// 静的ページ（About、個人情報、問い合わせ）
+// --------------------------------------------
+Route::get(
+    '/about', function () {
+        return view('contents.about');
+    }
+)->name('about');
+
 Route::get(
     '/kojin', function () {
         return view('contents.kojin');
     }
-);
+)->name('kojin');
+
 Route::get(
     '/inquiry', function () {
         return view('contents.inquiry');
     }
-);
+)->name('inquiry');
 
-// アルバム表示関連
+// --------------------------------------------
+// アルバム表示関連（画像一覧・画像取得）
+// --------------------------------------------
 Route::post('/show_album', [PageController::class, 'showAlbum']);
 Route::post('/show_pics', [PageController::class, 'getpics']);
 Route::post('/pic_up', [PageController::class, 'getmaster']);
 
-// /show_album にGETでアクセスされたときのエラー防止リダイレクト
+// /show_album にGETアクセスされた場合のエラー防止リダイレクト
 Route::get(
     '/show_album', function () {
         return redirect('/');
     }
 );
 
-// ログイン後のマイページ関連（ミドルウェアauth適用）
+// --------------------------------------------
+// ログイン後の会員用ページ
+// --------------------------------------------
+
+// マイページ（ダッシュボード）
 Route::get(
     '/dashboard', function () {
         return view('users.dashboard');
     }
 )->middleware(['auth'])->name('dashboard');
 
-// 写真アップロードページ（ログイン必須）
+// 写真アップロードページ
 Route::get(
     '/pic_upload', function () {
         return view('users.pic_upload');
     }
-)->middleware(['auth']);
+)->middleware(['auth'])->name('pic_upload');
 
-// プロフィール編集ページ（ログイン必須）
-Route::get('/profile', [MembersController::class, 'modify'])->middleware(['auth']);
+// プロフィール編集ページ（GET）
+Route::get('/profile', [MembersController::class, 'modify'])->middleware(['auth'])->name('profile.edit');
 
-// プロフィール更新処理（ログイン必須）
-Route::patch('/profile', [MembersController::class, 'userChange'])->middleware(['auth']);
+// プロフィール情報更新処理（PATCH）
+Route::patch('/profile', [MembersController::class, 'userChange'])->middleware(['auth'])->name('profile.update');
 
-// 写真関連（Ajax用）
+// 【追加】誤ってPOSTで/profileに来たときエラー防止リダイレクト
+Route::post(
+    '/profile', function () {
+        return redirect('/dashboard');
+    }
+);
+
+// --------------------------------------------
+// 写真関連（Ajax用：一覧・登録・取得・削除・更新）
+// --------------------------------------------
 Route::post('/user_pics', [UserPicsController::class, 'getpics'])->middleware(['auth']);
 Route::post('/save_pics', [UserPicsController::class, 'savepics'])->middleware(['auth']);
 Route::post('/get_master', [UserPicsController::class, 'getmaster'])->middleware(['auth']);
 Route::post('/delete_pic', [UserPicsController::class, 'deletepic'])->middleware(['auth']);
 Route::post('/save_title', [UserPicsController::class, 'savetitle'])->middleware(['auth']);
 
-// Breeze認証ルート（ログイン・ログアウトなど）
+// --------------------------------------------
+// Breeze認証ルート（ログイン・登録・パスワードリセットなど）
+// --------------------------------------------
 require __DIR__.'/auth.php';
