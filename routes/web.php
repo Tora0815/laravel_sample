@@ -1,68 +1,72 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ArticleController;
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\UserPicsController;
+use App\Http\Controllers\MembersController;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
-| Laravel Breeze構成に合わせたルート定義
-| ゲストページ・記事CRUD・プロフィール編集・認証周り
+| Here is where you can register web routes for your application.
+| These routes are loaded by the RouteServiceProvider within a group
+| which contains the "web" middleware group. Now create something great!
 */
 
-// ===== ゲスト向け固定ページ（page-base レイアウト） =====
-Route::get('/', fn () => view('contents.index'))->name('index');
-Route::get('/about', fn () => view('contents.about'))->name('about');
-Route::get('/kojin', fn () => view('contents.kojin'))->name('kojin');
-Route::get('/inquiry', fn () => view('contents.inquiry'))->name('inquiry');
+// トップページ（みんなのアルバム）
+Route::get('/', [PageController::class, 'top'])->name('index');
 
-// ===== 記事関連（ArticleController） =====
-Route::get('/articles',               [ArticleController::class, 'index']);
-Route::get('/articles/create',        [ArticleController::class, 'create']);
-Route::post('/articles',              [ArticleController::class, 'store']);
-Route::get('/articles/{article}/edit', [ArticleController::class, 'edit']);
-Route::put('/articles/{article}',     [ArticleController::class, 'update']);
-Route::delete('/articles/{article}',  [ArticleController::class, 'destroy']);
-Route::get('/articles/{article}',     [ArticleController::class, 'show']);
-
-// ===== 認証済みユーザーのみアクセス可能なルート（Breeze） =====
-Route::middleware(['auth', 'verified'])->group(
-    function () {
-        // ──────────────────────────────────────
-        // ダッシュボード
-        // ──────────────────────────────────────
-        Route::get('/dashboard', fn () => view('users.dashboard'))
-        ->name('dashboard');
-
-        // ──────────────────────────────────────
-        // 写真アップロードページ
-        // ──────────────────────────────────────
-        // ※ resources/views/users/pic_upload.blade.php を用意して下さい
-        Route::get('/pic-upload', fn () => view('users.pic_upload'))
-        ->name('pic_upload');
-
-        // ──────────────────────────────────────
-        // プロフィール（POST）
-        // ──────────────────────────────────────
-        // ※ ナビドロップダウンからのPOSTリクエスト受け皿
-        //    resources/views/users/profile.blade.php を用意するか、
-        //    コントローラにルーティングしてください
-        Route::post('/profile', fn () => view('users.profile'))
-        ->name('profile');
-
-        // ──────────────────────────────────────
-        // プロフィール編集（PATCH/DELETE）
-        // ──────────────────────────────────────
-        Route::get('/profile',    [ProfileController::class, 'edit'])
-        ->name('profile.edit');
-        Route::patch('/profile',  [ProfileController::class, 'update'])
-        ->name('profile.update');
-        Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->name('profile.destroy');
+// 静的ページ（個人情報・お問い合わせ）
+Route::get(
+    '/kojin', function () {
+        return view('contents.kojin');
+    }
+);
+Route::get(
+    '/inquiry', function () {
+        return view('contents.inquiry');
     }
 );
 
-// ===== Breezeの認証ルート自動読み込み =====
-require __DIR__ . '/auth.php';
+// アルバム表示関連
+Route::post('/show_album', [PageController::class, 'showAlbum']);
+Route::post('/show_pics', [PageController::class, 'getpics']);
+Route::post('/pic_up', [PageController::class, 'getmaster']);
+
+// /show_album にGETでアクセスされたときのエラー防止リダイレクト
+Route::get(
+    '/show_album', function () {
+        return redirect('/');
+    }
+);
+
+// ログイン後のマイページ関連（ミドルウェアauth適用）
+Route::get(
+    '/dashboard', function () {
+        return view('users.dashboard');
+    }
+)->middleware(['auth'])->name('dashboard');
+
+// 写真アップロードページ（ログイン必須）
+Route::get(
+    '/pic_upload', function () {
+        return view('users.pic_upload');
+    }
+)->middleware(['auth']);
+
+// プロフィール編集ページ（ログイン必須）
+Route::get('/profile', [MembersController::class, 'modify'])->middleware(['auth']);
+
+// プロフィール更新処理（ログイン必須）
+Route::patch('/profile', [MembersController::class, 'userChange'])->middleware(['auth']);
+
+// 写真関連（Ajax用）
+Route::post('/user_pics', [UserPicsController::class, 'getpics'])->middleware(['auth']);
+Route::post('/save_pics', [UserPicsController::class, 'savepics'])->middleware(['auth']);
+Route::post('/get_master', [UserPicsController::class, 'getmaster'])->middleware(['auth']);
+Route::post('/delete_pic', [UserPicsController::class, 'deletepic'])->middleware(['auth']);
+Route::post('/save_title', [UserPicsController::class, 'savetitle'])->middleware(['auth']);
+
+// Breeze認証ルート（ログイン・ログアウトなど）
+require __DIR__.'/auth.php';
