@@ -12,62 +12,23 @@ class MembersController extends Controller
     /**
      * ユーザープロフィールの表示
      * プロフィール編集画面の表示（GET /profile）
-     *
-     * ・ログイン中のユーザーIDを取得
-     * ・Users テーブルから基本情報を取得
-     * ・Profiles テーブルから追加情報を取得
-     * ・users.profile ビューへ渡す
      */
     public function modify()
     {
-        // ログイン中ユーザーIDを強制取得
-        $u_id = auth()->id();
-
-        $master_data = User::find($u_id);
-        $sub_data = Profile::where('u_id', $u_id)->get();
-
-        // 認証済みユーザーのIDを取得（セキュア）
+        // ログイン中ユーザーIDを取得
         $u_id = Auth::id();
 
         // ユーザーの基本情報を取得
-        $master_data = Auth::user();
+        $master_data = User::find($u_id);
 
-        // プロフィール詳細情報を取得 or 空コレクション
+        // プロフィール詳細情報を取得
         $sub_data = Profile::where('u_id', $u_id)->get();
 
-        // 編集画面へデータを渡してレンダリング
+        // 編集画面へデータを渡して表示
         return view('users.profile', compact('master_data', 'sub_data'));
     }
 
     /**
-     * ユーザープロフィールの更新
-     */
-    public function userChange(Request $request)
-    {
-        if ($request->has('change')) {
-            $u_id = auth()->id(); // ログインユーザーID
-
-            // ユーザー名更新
-            $user = User::find($u_id);
-            if ($user->name !== $request->u_name) {
-                $user->name = $request->u_name;
-                $user->save();
-            }
-
-            // プロフィール情報更新
-            $profile = Profile::firstOrNew(['u_id' => $u_id]);
-            $profile->u_yubin  = $request->u_yubin;
-            $profile->u_jusho1 = $request->u_jusho1;
-            $profile->u_jusho2 = $request->u_jusho2;
-            $profile->u_jusho3 = $request->u_jusho3;
-            $profile->u_tel    = $request->u_tel;
-            $profile->u_biko   = $request->u_biko;
-            $profile->save();
-
-            return redirect('dashboard');
-        }
-
-        return redirect('dashboard');
      * プロフィール更新処理（PATCH /profile）
      *
      * ・フォーム送信された情報を Profiles に保存（更新 or 新規作成）
@@ -77,16 +38,12 @@ class MembersController extends Controller
     {
         $u_id = Auth::id();
 
-        // ──────────────────────────────────
         // 1) ユーザー基本情報の更新（名前のみ）
-        // ──────────────────────────────────
-        $user = Auth::user();
+        $user = User::find($u_id);
         $user->name = $request->input('u_name');
         $user->save();
 
-        // ──────────────────────────────────
         // 2) プロフィール詳細情報の更新 or 新規作成
-        // ──────────────────────────────────
         $profile = Profile::firstOrNew(['u_id' => $u_id]);
         $profile->yubin   = $request->input('u_yubin');
         $profile->jusho1  = $request->input('u_jusho1');
