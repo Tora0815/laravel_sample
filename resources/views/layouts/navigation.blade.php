@@ -54,12 +54,20 @@
 
                     {{-- ドロップダウンメニュー本体 --}}
                     <x-slot name="content">
+<<<<<<< HEAD
                         {{-- プロフィール編集（form送信ではなくGETリンクに修正） --}}
                         <x-dropdown-link :href="route('profile.edit')">
                             {{ __('プロフィール') }}
                         </x-dropdown-link>
 
                         {{-- ログアウト（ここはPOST送信のまま） --}}
+=======
+                        {{-- プロフィール編集 --}}
+                        <x-dropdown-link :href="route('profile.edit')">
+                            {{ __('プロフィール') }}
+                        </x-dropdown-link>
+                        {{-- ログアウト --}}
+>>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <x-dropdown-link :href="route('logout')"
@@ -109,12 +117,20 @@
                 <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
             </div>
             <div class="mt-3 space-y-1">
+<<<<<<< HEAD
                 {{-- プロフィール編集（GETリンクに修正） --}}
                 <x-responsive-nav-link :href="route('profile.edit')">
                     {{ __('プロフィール') }}
                 </x-responsive-nav-link>
 
                 {{-- ログアウト（POST送信のまま） --}}
+=======
+                {{-- モバイルメニュー内のプロフィール --}}
+                <x-responsive-nav-link :href="route('profile.edit')" :active="request()->routeIs('profile.edit')">
+                    {{ __('プロフィール') }}
+                </x-responsive-nav-link>
+                {{-- ログアウト --}}
+>>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <x-responsive-nav-link :href="route('logout')"

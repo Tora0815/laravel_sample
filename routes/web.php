@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+<<<<<<< HEAD
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\UserPicsController;
 use App\Http\Controllers\MembersController;
@@ -19,12 +20,24 @@ use App\Http\Controllers\MembersController;
  * - 名前付きルート（->name()）はBladeテンプレートから参照されるため必須
  * - 静的ページルート（about/kojin/inquiry）はfunction()で対応
  */
+=======
+use App\Http\Controllers\MembersController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+| Laravel Breeze 構成に合わせたルート定義
+| ゲストページ・プロフィール編集・認証周り
+*/
+>>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
 
 // --------------------------------------------
 // トップページ（みんなのアルバム一覧）
 // --------------------------------------------
 Route::get('/', [PageController::class, 'top'])->name('index');
 
+<<<<<<< HEAD
 // --------------------------------------------
 // 静的ページ（About、個人情報、問い合わせ）
 // --------------------------------------------
@@ -104,3 +117,34 @@ Route::post('/save_title', [UserPicsController::class, 'savetitle'])->middleware
 // Breeze認証ルート（ログイン・登録・パスワードリセットなど）
 // --------------------------------------------
 require __DIR__.'/auth.php';
+=======
+// ===== 認証済みユーザーのみアクセス可能なルート =====
+Route::middleware(['auth', 'verified'])->group(
+    function () {
+        // ─── ダッシュボード ─────────────────────────────
+        Route::get('/dashboard', fn () => view('users.dashboard'))
+        ->name('dashboard');
+
+        // ─── 写真アップロードページ（後で作成予定） ───────────────
+        Route::get('/pic-upload', fn () => view('users.pic_upload'))
+        ->name('pic_upload');
+
+        // ─── プロフィール編集画面表示 ────────────────────────
+        // MembersController@modify でフォームに既存データを渡して表示
+        Route::get('/profile', [MembersController::class, 'modify'])
+        ->name('profile.edit');
+
+        // ─── プロフィール更新 ────────────────────────────────
+        // フォームは PATCH メソッドで profile.update に送信
+        Route::patch('/profile', [MembersController::class, 'userChange'])
+        ->name('profile.update');
+
+        // ─── （必要であれば）プロフィール削除 ───────────────────
+        // Route::delete('/profile', [MembersController::class,'destroy'])
+        //      ->name('profile.destroy');
+    }
+);
+
+// ===== Breeze の認証ルート自動読み込み（ログイン／登録など） =====
+require __DIR__ . '/auth.php';
+>>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a

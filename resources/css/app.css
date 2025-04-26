@@ -1,3 +1,7 @@
+/* 1) Bootstrap のリセット＆コンポーネント */
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+/* 2) Tailwind のデフォルトリセット＋ユーティリティ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -3,26 +3,50 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Profile;
 
 class MembersController extends Controller
 {
     /**
+<<<<<<< HEAD
      * ユーザープロフィールの表示
+=======
+     * プロフィール編集画面の表示（GET /profile）
+     *
+     * ・ログイン中のユーザーIDを取得
+     * ・Users テーブルから基本情報を取得
+     * ・Profiles テーブルから追加情報を取得
+     * ・users.profile ビューへ渡す
+>>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
      */
-    public function modify(Request $request)
+    public function modify()
     {
+<<<<<<< HEAD
         // ログイン中ユーザーIDを強制取得
         $u_id = auth()->id();
 
         $master_data = User::find($u_id);
         $sub_data = Profile::where('u_id', $u_id)->get();
 
+=======
+        // 認証済みユーザーのIDを取得（セキュア）
+        $u_id = Auth::id();
+
+        // ユーザーの基本情報を取得
+        $master_data = Auth::user();
+
+        // プロフィール詳細情報を取得 or 空コレクション
+        $sub_data = Profile::where('u_id', $u_id)->get();
+
+        // 編集画面へデータを渡してレンダリング
+>>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
         return view('users.profile', compact('master_data', 'sub_data'));
     }
 
     /**
+<<<<<<< HEAD
      * ユーザープロフィールの更新
      */
     public function userChange(Request $request)
@@ -51,5 +75,37 @@ class MembersController extends Controller
         }
 
         return redirect('dashboard');
+=======
+     * プロフィール更新処理（PATCH /profile）
+     *
+     * ・フォーム送信された情報を Profiles に保存（更新 or 新規作成）
+     * ・完了後、ダッシュボードへリダイレクト
+     */
+    public function userChange(Request $request)
+    {
+        $u_id = Auth::id();
+
+        // ──────────────────────────────────
+        // 1) ユーザー基本情報の更新（名前のみ）
+        // ──────────────────────────────────
+        $user = Auth::user();
+        $user->name = $request->input('u_name');
+        $user->save();
+
+        // ──────────────────────────────────
+        // 2) プロフィール詳細情報の更新 or 新規作成
+        // ──────────────────────────────────
+        $profile = Profile::firstOrNew(['u_id' => $u_id]);
+        $profile->yubin   = $request->input('u_yubin');
+        $profile->jusho1  = $request->input('u_jusho1');
+        $profile->jusho2  = $request->input('u_jusho2');
+        $profile->jusho3  = $request->input('u_jusho3');
+        $profile->tel     = $request->input('u_tel');
+        $profile->biko    = $request->input('u_biko');
+        $profile->save();
+
+        // 更新完了後はダッシュボードへリダイレクト
+        return redirect()->route('dashboard');
+>>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
     }
 }
