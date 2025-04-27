@@ -19,8 +19,7 @@ use App\Http\Controllers\MembersController;
  * - 名前付きルート（->name()）はBladeテンプレートから参照されるため必須
  * - 静的ページルート（about/kojin/inquiry）はfunction()で対応
  */
-=======
-use App\Http\Controllers\MembersController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -29,7 +28,7 @@ use App\Http\Controllers\MembersController;
 | Laravel Breeze 構成に合わせたルート定義
 | ゲストページ・プロフィール編集・認証周り
 */
->>>>>>> ed55a1803453edc0d4250481b6a1843aa385d05a
+
 
 // --------------------------------------------
 // トップページ（みんなのアルバム一覧）
@@ -137,8 +136,8 @@ Route::middleware(['auth', 'verified'])->group(
         ->name('profile.update');
 
         // ─── （必要であれば）プロフィール削除 ───────────────────
-        // Route::delete('/profile', [MembersController::class,'destroy'])
-        //      ->name('profile.destroy');
+        Route::delete('/profile', [MembersController::class,'destroy'])
+        ->name('profile.destroy');
     }
 );
 
