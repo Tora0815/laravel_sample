@@ -7,96 +7,139 @@ use App\Http\Controllers\MembersController;
 
 /**
  * --------------------------------------------
- * Webルート設定ファイル (p.216–217準拠)
+ * Webルート設定ファイル
  * --------------------------------------------
  *
- * ・このファイルは、画面表示やAjax通信など、Webリクエスト全般を管理します。
- * ・認証済みユーザー専用ルートには auth ミドルウェアを適用。
- * ・Breeze の認証関連ルートは最後に require で読み込み。
+ * ・このファイルは、主に画面表示やデータ通信に関するルートを管理します。
+ * ・認証（auth）ミドルウェア適用済みルートもここに記載します。
+ * ・Breeze認証関連ルートは、最後に auth.php を読み込んでいます。
  *
  * 注意：
- * - GET/POST/PATCH の HTTP メソッドを適切に使い分け
- * - 名前付きルート（->name()）は Blade や JS 側で参照されるため必須
- * - 静的ページはクロージャ関数で簡潔に定義
+ * - GET/POST/PATCHの使い分けを正しく行う
+ * - 名前付きルート（->name()）はBladeテンプレートから参照されるため必須
+ * - 静的ページルート（about/kojin/inquiry）はfunction()で対応
  */
 
 
 /*
 |--------------------------------------------------------------------------
-| ゲストページ（認証不要）
+| Web Routes
 |--------------------------------------------------------------------------
-| トップページ／静的なコンテンツ／ゲスト用フォームの Ajax
+| Laravel Breeze 構成に合わせたルート定義
+| ゲストページ・プロフィール編集・認証周り
 */
 
-// ─── トップページ （みんなのアルバム一覧） ─────────────────────────────
-Route::get('/', [PageController::class, 'top'])
-    ->name('index');
 
-// ─── 静的ページ（About、個人情報、問い合わせ） ─────────────────────────
-Route::get('/about',   fn() => view('contents.about'))
-    ->name('about');
-Route::get('/kojin',   fn() => view('contents.kojin'))
-    ->name('kojin');
-Route::get('/inquiry', fn() => view('contents.inquiry'))
-    ->name('inquiry');
+// --------------------------------------------
+// トップページ（みんなのアルバム一覧）
+// --------------------------------------------
+Route::get('/', [PageController::class, 'top'])->name('index');
 
-// ─── アルバム表示関連（Ajax：サムネイル一覧／マスター画像取得） ──────────────
-Route::post('/show_album', [PageController::class, 'showAlbum'])
-    ->name('show_album');
-Route::post('/show_pics',  [PageController::class, 'getpics'])
-    ->name('show_pics');
-Route::post('/pic_up',     [PageController::class, 'getmaster'])
-    ->name('pic_up');
-// GET で /show_album に来た場合の安全なリダイレクト
-Route::get('/show_album', fn() => redirect('/'));
+// --------------------------------------------
+// 静的ページ（About、個人情報、問い合わせ）
+// --------------------------------------------
+Route::get(
+    '/about', function () {
+        return view('contents.about');
+    }
+)->name('about');
 
+Route::get(
+    '/kojin', function () {
+        return view('contents.kojin');
+    }
+)->name('kojin');
 
+Route::get(
+    '/inquiry', function () {
+        return view('contents.inquiry');
+    }
+)->name('inquiry');
 
-/*
-|--------------------------------------------------------------------------
-| 会員ページ（認証必須：auth ミドルウェア適用）
-|--------------------------------------------------------------------------
-| ダッシュボード／プロフィール編集／写真投稿機能の Ajax
-*/
-Route::middleware(['auth'])->group(
-    function () {
-        // ─── マイページ（ダッシュボード） ─────────────────────────────────
-        Route::get('/dashboard', fn() => view('users.dashboard'))
-        ->name('dashboard');
+// --------------------------------------------
+// アルバム表示関連（画像一覧・画像取得）
+// --------------------------------------------
+Route::post('/show_album', [PageController::class, 'showAlbum']);
+Route::post('/show_pics', [PageController::class, 'getpics']);
+Route::post('/pic_up', [PageController::class, 'getmaster']);
 
-        // ─── 写真アップロード画面 ────────────────────────────────────────────
-        Route::get('/pic_upload', fn() => view('users.pic_upload'))
-        ->name('pic_upload');
-
-        // ─── プロフィール編集 ───────────────────────────────────────────────
-        // GET：/profile への直接アクセスはダッシュボードにリダイレクト
-        Route::get('/profile', fn() => redirect('/dashboard'))
-        ->name('profile.edit');
-        // POST：MembersController@modify へフォームデータを送信
-        Route::post('/profile', [MembersController::class, 'modify'])
-        ->name('profile.edit');
-        // PATCH：プロフィール情報更新（MembersController@userChange）
-        Route::patch('/profile', [MembersController::class, 'userChange'])
-        ->name('profile.update');
-
-        // ─── 写真管理（Ajax：一覧取得／保存／拡大表示／削除／タイトル更新） ────────
-        Route::post('/user_pics',  [UserPicsController::class, 'getpics'])
-        ->name('user_pics');
-        Route::post('/save_pics',  [UserPicsController::class, 'savepics'])
-        ->name('save_pics');
-        Route::post('/get_master', [UserPicsController::class, 'getmaster'])
-        ->name('get_master');
-        Route::post('/delete_pic', [UserPicsController::class, 'deletepic'])
-        ->name('delete_pic');
-        Route::post('/save_title', [UserPicsController::class, 'savetitle'])
-        ->name('save_title');
+// /show_album にGETアクセスされた場合のエラー防止リダイレクト
+Route::get(
+    '/show_album', function () {
+        return redirect('/');
     }
 );
 
+// --------------------------------------------
+// ログイン後の会員用ページ
+// --------------------------------------------
 
-/*
-|--------------------------------------------------------------------------
-| Breeze 認証ルート（ログイン／登録／パスワードリセットなど）
-|--------------------------------------------------------------------------
-*/
+// マイページ（ダッシュボード）
+Route::get(
+    '/dashboard', function () {
+        return view('users.dashboard');
+    }
+)->middleware(['auth'])->name('dashboard');
+
+// 写真アップロードページ
+Route::get(
+    '/pic_upload', function () {
+        return view('users.pic_upload');
+    }
+)->middleware(['auth'])->name('pic_upload');
+
+// プロフィール編集ページ（GET）
+Route::get('/profile', [MembersController::class, 'modify'])->middleware(['auth'])->name('profile.edit');
+
+// プロフィール情報更新処理（PATCH）
+Route::patch('/profile', [MembersController::class, 'userChange'])->middleware(['auth'])->name('profile.update');
+
+// 【追加】誤ってPOSTで/profileに来たときエラー防止リダイレクト
+Route::post(
+    '/profile', function () {
+        return redirect('/dashboard');
+    }
+);
+
+// --------------------------------------------
+// 写真関連（Ajax用：一覧・登録・取得・削除・更新）
+// --------------------------------------------
+Route::post('/user_pics', [UserPicsController::class, 'getpics'])->middleware(['auth']);
+Route::post('/save_pics', [UserPicsController::class, 'savepics'])->middleware(['auth']);
+Route::post('/get_master', [UserPicsController::class, 'getmaster'])->middleware(['auth']);
+Route::post('/delete_pic', [UserPicsController::class, 'deletepic'])->middleware(['auth']);
+Route::post('/save_title', [UserPicsController::class, 'savetitle'])->middleware(['auth']);
+
+// --------------------------------------------
+// Breeze認証ルート（ログイン・登録・パスワードリセットなど）
+// --------------------------------------------
+require __DIR__.'/auth.php';
+// ===== 認証済みユーザーのみアクセス可能なルート =====
+Route::middleware(['auth', 'verified'])->group(
+    function () {
+        // ─── ダッシュボード ─────────────────────────────
+        Route::get('/dashboard', fn () => view('users.dashboard'))
+        ->name('dashboard');
+
+        // ─── 写真アップロードページ（後で作成予定） ───────────────
+        Route::get('/pic-upload', fn () => view('users.pic_upload'))
+        ->name('pic_upload');
+
+        // ─── プロフィール編集画面表示 ────────────────────────
+        // MembersController@modify でフォームに既存データを渡して表示
+        Route::get('/profile', [MembersController::class, 'modify'])
+        ->name('profile.edit');
+
+        // ─── プロフィール更新 ────────────────────────────────
+        // フォームは PATCH メソッドで profile.update に送信
+        Route::patch('/profile', [MembersController::class, 'userChange'])
+        ->name('profile.update');
+
+        // ─── （必要であれば）プロフィール削除 ───────────────────
+        Route::delete('/profile', [MembersController::class,'destroy'])
+        ->name('profile.destroy');
+    }
+);
+
+// ===== Breeze の認証ルート自動読み込み（ログイン／登録など） =====
 require __DIR__ . '/auth.php';
