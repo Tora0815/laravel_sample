@@ -4,49 +4,39 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreatePicturesTable extends Migration
 {
     /**
      * Run the migrations.
-     * 画像投稿用のpicturesテーブルを作成
      */
-    public function up(): void
+    public function up()
     {
         Schema::create(
             'pictures', function (Blueprint $table) {
-                // 主キーID（Laravel標準）
-                $table->id();
+                $table->id(); // 主キー
 
-                // ユーザーID（usersテーブルとリレーション想定）
+                // ユーザーID（紐付け用）
                 $table->unsignedBigInteger('u_id')->comment('ユーザーID');
 
-                // 画像ファイル名
+                // 各種画像ファイル情報
                 $table->string('file_name')->comment('ファイル名');
-
-                // サムネイル名
                 $table->string('thumb_name')->comment('サムネイル名');
+                $table->string('title')->comment('タイトル');
 
-                // 投稿タイトル（任意入力）
-                $table->string('title')->nullable()->comment('タイトル');
-
-                // 種別を表すタイプフラグ（例：通常投稿、特別投稿など）
+                // 管理フラグ・分類フラグなど
                 $table->integer('type_flag')->default(0)->comment('タイプフラグ');
-
-                // 削除・無効などの管理用フラグ
                 $table->integer('kanri_flag')->default(0)->comment('管理フラグ');
 
-                // created_at / updated_at を自動で追加
-                $table->timestamps();
+                $table->timestamps(); // 作成日時・更新日時
             }
         );
     }
 
     /**
      * Reverse the migrations.
-     * テーブル削除時の処理
      */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('pictures');
     }
-};
+}
