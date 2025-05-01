@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y \
 
 RUN composer install --no-dev --optimize-autoloader
 
-EXPOSE 8000
+EXPOSE 10000
 
-CMD bash -c "php artisan key:generate && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000"
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=10000"]
+
+
