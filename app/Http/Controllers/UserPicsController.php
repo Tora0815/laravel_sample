@@ -5,78 +5,75 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Picture;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\ImageManagerStatic as Image;
+use Intervention\Image\Facades\Image;
 
 class UserPicsController extends Controller
 {
     /**
-     * ユーザー画像のアップロードとサムネイル作成
+     * Ajax：画像保存
      */
-    public function upload(Request $request)
+    public function savepics(Request $request)
     {
-        // バリデーション（表示力の最大倍率）を保つ
+        // バリデーション
         $request->validate(
             [
-            'upfile' => 'required|file|image|max:500000',
+            'upfile' => 'required|image|max:5120', // 5MBまで
             ]
         );
 
         $file = $request->file('upfile');
+        $uid = $request->input('u_id');
 
-        // サムネイル保存用パスを作成
-        $main_path = storage_path('app/main_images/');
-        $thumb_path = storage_path('app/thumb_images/');
+        // 画像名の生成
+        $filename = md5_file($file->getRealPath()) . '.' . $file->getClientOriginalExtension();
 
-        if (!is_dir($main_path)) { mkdir($main_path, 0755, true);
+        // 保存先パス
+        $mainPath = storage_path('app/main_images/');
+        $thumbPath = storage_path('app/thumb_images/');
+
+        // ディレクトリがなければ作成
+        if (!is_dir($mainPath)) { mkdir($mainPath, 0755, true);
         }
-        if (!is_dir($thumb_path)) { mkdir($thumb_path, 0755, true);
+        if (!is_dir($thumbPath)) { mkdir($thumbPath, 0755, true);
         }
 
-        // メイン画像を保存
-        $main_name = $file->store('main_images');
-
-        // サムネイル画像を作成
-        $f_info = pathinfo($file->getRealPath());
-        $temp_name = md5(file_get_contents($file->getRealPath()));
-        $temp_name .= '.' . $f_info['extension'];
-
-        Image::make($file)
+        // Intervention Image を使って保存
+        \Intervention\Image\Facades\Image::make($file)
             ->resize(
-                1600, 1600, function ($constraint) {
-                    $constraint->aspectRatio();
+                1600, 1600, function ($c) {
+                    $c->aspectRatio();
                 }
-            )
-            ->save($main_path . $temp_name);
+            )->save($mainPath . $filename);
 
-        Image::make($file)
+        \Intervention\Image\Facades\Image::make($file)
             ->resize(
-                300, 300, function ($constraint) {
-                    $constraint->aspectRatio();
+                300, 300, function ($c) {
+                    $c->aspectRatio();
                 }
-            )
-            ->save($thumb_path . $temp_name);
+            )->save($thumbPath . $filename);
 
-        // DBに登録
-        $picture = new Picture();
-        $picture->u_id = auth()->id();
-        $picture->thumb_name = $temp_name;
-        $picture->save();
+        // データベースに登録
+        \App\Models\Picture::create(
+            [
+            'u_id' => $uid,
+            'thumb_name' => $filename,
+            'title' => null,
+            ]
+        );
 
-        return;
+        return response()->json(['message' => '画像を保存しました']);
     }
 
     /**
-     * Ajax用 サムネイルリスト表示
+     * Ajax：画像一覧取得
      */
     public function getpics(Request $request)
     {
-        $file_list = Picture::where('u_id', auth()->id())
-            ->orderBy('id')
-            ->get();
+        $file_list = Picture::where('u_id', auth()->id())->orderBy('id')->get();
 
-        $page_count = 24; // 1ページの表示件数
+        $page_count = 24;
         $array_count = 0;
-        $page_array = array();
+        $page_array = [];
 
         foreach ($file_list as $file) {
             $page_array[$array_count][] = $file;
@@ -85,18 +82,23 @@ class UserPicsController extends Controller
             }
         }
 
-        return view('ajax.list_only', compact('page_array'));
+        $page_num = 0;
+        $data_list = $page_array[$page_num] ?? [];
+        $tab_count = count($page_array);
+
+        return view('ajax.list_only', compact('data_list', 'tab_count', 'page_num'));
     }
 
     /**
-     * Ajax用 抽出表示用マスター画像生成
+     * Ajax：画像詳細取得（モーダル用）
      */
     public function getmaster(Request $request)
     {
         $main_path = storage_path('app/main_images/');
         $image_file = Picture::find($request->img_id);
 
-        if (!$image_file) { return '';
+        if (!$image_file) {
+            return '';
         }
 
         $data = file_get_contents($main_path . $image_file->thumb_name);
@@ -106,37 +108,29 @@ class UserPicsController extends Controller
     }
 
     /**
-     * Ajax用 タイトル書き換え
+     * Ajax：タイトル保存
      */
     public function savetitle(Request $request)
     {
         $image_file = Picture::find($request->save_id);
-
         if ($image_file) {
             $image_file->title = $request->title;
             $image_file->save();
         }
-
-        return;
+        return response()->noContent();
     }
 
     /**
-     * Ajax用 画像削除
+     * Ajax：画像削除
      */
     public function deletepic(Request $request)
     {
         $image_file = Picture::find($request->delete_id);
-
         if ($image_file) {
-            $main_path = storage_path('app/main_images/');
-            $thumb_path = storage_path('app/thumb_images/');
-
             Storage::delete('main_images/' . $image_file->thumb_name);
             Storage::delete('thumb_images/' . $image_file->thumb_name);
-
             $image_file->delete();
         }
-
-        return;
+        return response()->noContent();
     }
 }
