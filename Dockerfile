@@ -1,4 +1,4 @@
-# Laravel + Sail 用 Renderデプロイ対応 Dockerfile（artisan自動実行付き）
+# Laravel + Sail 用 Renderデプロイ対応 Dockerfile（PostgreSQL対応）
 
 FROM laravelsail/php82-composer
 
@@ -14,11 +14,11 @@ RUN apt-get update && apt-get install -y \
   unzip \
   git \
   curl \
-  && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+  libpq-dev \
+  && docker-php-ext-install pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd
 
 RUN composer install --no-dev --optimize-autoloader
 
 EXPOSE 8000
 
-# 🟢 本番起動時にartisan key生成＆マイグレーションも自動実行
 CMD bash -c "php artisan key:generate && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000"
