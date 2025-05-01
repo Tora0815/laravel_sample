@@ -1,4 +1,4 @@
-# Laravel + Sail 用 Renderデプロイ対応 Dockerfile（修正版）
+# Laravel + Sail 用 Renderデプロイ対応 Dockerfile（artisan自動実行付き）
 
 FROM laravelsail/php82-composer
 
@@ -18,8 +18,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN composer install --no-dev --optimize-autoloader
 
-# ⚠️ ここでは key:generate / migrate は実行しない（実行時にやる）
-
 EXPOSE 8000
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# 🟢 本番起動時にartisan key生成＆マイグレーションも自動実行
+CMD bash -c "php artisan key:generate && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000"
