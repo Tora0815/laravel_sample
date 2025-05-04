@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
-use App\Models\Picture;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Facades\Image;
+use App\Models\Picture;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class UserPicsController extends Controller
 {
@@ -14,54 +16,65 @@ class UserPicsController extends Controller
      */
     public function savepics(Request $request)
     {
-        // バリデーション
+        // バリデーション（画像ファイル、最大5MB）
         $request->validate(
             [
-            'upfile' => 'required|image|max:5120', // 5MBまで
+            'upfile' => 'required|image|max:5120',
             ]
         );
 
         $file = $request->file('upfile');
         $uid = $request->input('u_id');
 
-        // 画像名の生成
-        $filename = md5_file($file->getRealPath()) . '.' . $file->getClientOriginalExtension();
-
-        // 保存先パス
-        $mainPath = storage_path('app/main_images/');
-        $thumbPath = storage_path('app/thumb_images/');
-
-        // ディレクトリがなければ作成
-        if (!is_dir($mainPath)) { mkdir($mainPath, 0755, true);
-        }
-        if (!is_dir($thumbPath)) { mkdir($thumbPath, 0755, true);
+        if (!$file || !$uid) {
+            return response()->json(['error' => 'ファイルまたはユーザーIDが不足しています'], 400);
         }
 
-        // Intervention Image を使って保存
-        \Intervention\Image\Facades\Image::make($file)
-            ->resize(
-                1600, 1600, function ($c) {
-                    $c->aspectRatio();
-                }
-            )->save($mainPath . $filename);
+        try {
+            Log::debug('▶ 保存開始');
 
-        \Intervention\Image\Facades\Image::make($file)
-            ->resize(
-                300, 300, function ($c) {
-                    $c->aspectRatio();
-                }
-            )->save($thumbPath . $filename);
+            $filename = md5_file($file->getRealPath()) . '.' . $file->getClientOriginalExtension();
+            $originalName = $file->getClientOriginalName();
 
-        // データベースに登録
-        \App\Models\Picture::create(
-            [
-            'u_id' => $uid,
-            'thumb_name' => $filename,
-            'title' => null,
-            ]
-        );
+            $mainPath = storage_path('app/main_images/');
+            $thumbPath = storage_path('app/thumb_images/');
 
-        return response()->json(['message' => '画像を保存しました']);
+            if (!is_dir($mainPath)) { mkdir($mainPath, 0755, true);
+            }
+            if (!is_dir($thumbPath)) { mkdir($thumbPath, 0755, true);
+            }
+
+            Log::debug('▶ メイン画像保存前');
+            $manager = new ImageManager(new Driver());
+            $manager->read($file->getRealPath())
+                ->scale(width: 1600)
+                ->save($mainPath . $filename);
+
+            Log::debug('▶ サムネイル保存前');
+            $manager->read($file->getRealPath())
+                ->scale(width: 300)
+                ->save($thumbPath . $filename);
+
+            Log::debug('▶ DB登録前');
+            Picture::create(
+                [
+                'u_id' => $uid,
+                'file_name' => $originalName,
+                'thumb_name' => $filename,
+                'title' => null,
+                'type_flag' => 0,
+                'kanri_flag' => 0,
+                ]
+            );
+
+            Log::debug('✅ 完了');
+
+            return response()->json(['message' => '画像を保存しました'], 200);
+
+        } catch (\Exception $e) {
+            Log::error('❌ エラー発生: ' . $e->getMessage());
+            return response()->json(['error' => '画像保存時エラー: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

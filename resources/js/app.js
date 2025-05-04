@@ -7,15 +7,24 @@ window.$ = $;
 window.jQuery = $;
 
 $(function () {
-    console.log("✅ DOM Ready");
+    // CSRFトークンをヘッダーに設定（全てのjQuery Ajaxに適用）
+    $.ajaxSetup({
+        headers: {
+            "X-CSRF-TOKEN": document
+                .querySelector('meta[name="csrf-token"]')
+                .getAttribute("content"),
+        },
+    });
+
+    console.log("DOM Ready");
 
     $("#file_up_bt").on("click", function () {
-        console.log("✅ アップロードボタン押された");
+        console.log("アップロードボタン押された");
         $("#select_file").trigger("click");
     });
 
     $("#select_file").on("change", function (e) {
-        console.log("✅ ファイルが選択されました");
+        console.log("ファイルが選択されました");
         let files = e.target.files;
         for (let i = 0; i < files.length; i++) {
             uploadData(files[i]);
@@ -27,12 +36,6 @@ $(function () {
 
 function changeContents(page) {
     let fd = new FormData();
-    fd.append(
-        "_token",
-        document
-            .querySelector('meta[name="csrf-token"]')
-            .getAttribute("content")
-    );
     fd.append("u_id", $("#u_id").val());
     fd.append("page", page);
 
@@ -49,12 +52,6 @@ function changeContents(page) {
 
 function uploadData(file) {
     let fd = new FormData();
-    fd.append(
-        "_token",
-        document
-            .querySelector('meta[name="csrf-token"]')
-            .getAttribute("content")
-    );
     fd.append("u_id", $("#u_id").val());
     fd.append("upfile", file);
 
