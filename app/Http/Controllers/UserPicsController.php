@@ -2,148 +2,180 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Picture;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\ImageManagerStatic as Image;
 
 class UserPicsController extends Controller
 {
-    /**
-     * Ajax：画像保存
-     */
-    public function savepics(Request $request)
+    // 画像をストレージに保存 + サムネイル保存
+    public function save_pics(Request $request)
     {
-        // バリデーション（画像ファイル、最大5MB）
-        $request->validate(
+        // dd($request->all());
+
+        // 画像形式チェック
+        $params = $request->validate(
             [
-            'upfile' => 'required|image|max:5120',
+            'upfile' => 'required|file|image|max:500000',
             ]
         );
 
-        $file = $request->file('upfile');
-        $uid = $request->input('u_id');
+        $file = $params['upfile'];
 
-        if (!$file || !$uid) {
-            return response()->json(['error' => 'ファイルまたはユーザーIDが不足しています'], 400);
+        // 保存用ディレクトリ存在確認
+        if (!is_dir(storage_path("app/main_images"))) {
+            mkdir(storage_path("app/main_images"));
         }
 
-        try {
-            Log::debug('▶ 保存開始');
-
-            $filename = md5_file($file->getRealPath()) . '.' . $file->getClientOriginalExtension();
-            $originalName = $file->getClientOriginalName();
-
-            $mainPath = storage_path('app/main_images/');
-            $thumbPath = storage_path('app/thumb_images/');
-
-            if (!is_dir($mainPath)) { mkdir($mainPath, 0755, true);
-            }
-            if (!is_dir($thumbPath)) { mkdir($thumbPath, 0755, true);
-            }
-
-            Log::debug('▶ メイン画像保存前');
-            $manager = new ImageManager(new Driver());
-            $manager->read($file->getRealPath())
-                ->scale(width: 1600)
-                ->save($mainPath . $filename);
-
-            Log::debug('▶ サムネイル保存前');
-            $manager->read($file->getRealPath())
-                ->scale(width: 300)
-                ->save($thumbPath . $filename);
-
-            Log::debug('▶ DB登録前');
-            Picture::create(
-                [
-                'u_id' => $uid,
-                'file_name' => $originalName,
-                'thumb_name' => $filename,
-                'title' => null,
-                'type_flag' => 0,
-                'kanri_flag' => 0,
-                ]
-            );
-
-            Log::debug('✅ 完了');
-
-            return response()->json(['message' => '画像を保存しました'], 200);
-
-        } catch (\Exception $e) {
-            Log::error('❌ エラー発生: ' . $e->getMessage());
-            return response()->json(['error' => '画像保存時エラー: ' . $e->getMessage()], 500);
+        if (!is_dir(storage_path("app/thumb_images"))) {
+            mkdir(storage_path("app/thumb_images"));
         }
+
+        // パス定義
+        $main_path = "main_images";
+        $image_path = storage_path("app/main_images/");
+        $thumb_path = storage_path("app/thumb_images/");
+
+        // ファイル保存（ランダム名で保存）
+        $temp_name = $request->file('upfile')->store($main_path);
+        $f_info = getimagesize($file->getRealPath());
+        $temp_name = $file->hashName();
+
+        // サムネイル作成（160x160固定サイズ）
+        Image::make($file)->resize(
+            160, 160, function ($constraint) {
+                $constraint->aspectRatio(); // アスペクト比保持
+            }
+        )->save($image_path . $temp_name);
+
+        $thumb_name = $f_info['filename'] . "_thumb." . $f_info['extension'];
+        // サムネイルを別サイズ（300x300）でも保存
+        Image::make($file)->resize(
+            300, 300, function ($constraint) {
+                $constraint->aspectRatio();
+            }
+        )->save($thumb_path . $thumb_name);
+
+        // DBに保存
+        $data = new Picture;
+        $data->u_id = $request->u_id;
+        $data->file_name = $f_info['basename'];
+        $data->thumb_name = $thumb_name;
+        $data->save();
+
+        return;
     }
 
-    /**
-     * Ajax：画像一覧取得
-     */
+        // サムネイルウィンドウ生成（Ajaxの戻り用）
     public function getpics(Request $request)
     {
-        $file_list = Picture::where('u_id', auth()->id())->orderBy('id')->get();
-
         $page_count = 24;
-        $array_count = 0;
-        $page_array = [];
 
-        foreach ($file_list as $file) {
-            $page_array[$array_count][] = $file;
-            if (count($page_array[$array_count]) >= $page_count) {
+        // **u_idが無ければログアウトさせるorエラーにする**
+        if (!$request->filled('u_id')) {
+            abort(400, 'ユーザーIDが取得できませんでした');
+        }
+
+        $u_id = $request->u_id;
+        $page_num = $request->page ?? 0; // pageがnullなら0にする
+
+        $thumb_path = storage_path("app/thumb_images/");
+        $file_list = Picture::select('id', 'thumb_name', 'title')
+            ->where('u_id', $u_id)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        if ($file_list->isEmpty()) {
+            return;
+        }
+
+        $page_array = [];
+        $count = 0;
+        $array_count = 0;
+        for ($i = 0; $i < count($file_list); $i++) {
+            $page_array[$array_count][$count] = $file_list[$i];
+            $count++;
+            if ($count >= $page_count) {
+                $count = 0;
                 $array_count++;
             }
         }
 
-        $page_num = 0;
-        $data_list = $page_array[$page_num] ?? [];
+        // **存在チェックを入れる！**
+        if (!isset($page_array[$page_num])) {
+            $page_num = 0; // なければ最初のページに戻す
+        }
+
+        $data_list = [];
+        foreach ($page_array[$page_num] as $file) {
+            $thumb = file_get_contents($thumb_path . $file->thumb_name);
+            $p_info = pathinfo($file->thumb_name);
+
+            $type = (strtolower($p_info['extension']) == "png") ? "data:image/png;base64," : "data:image/jpeg;base64,";
+            $data_list[] = [
+            'id' => $file->id,
+            'img' => $type . base64_encode($thumb),
+            'title' => $file->title
+            ];
+        }
+
         $tab_count = count($page_array);
 
         return view('ajax.list_only', compact('data_list', 'tab_count', 'page_num'));
     }
 
-    /**
-     * Ajax：画像詳細取得（モーダル用）
-     */
+    // 拡大表示用マスター画像生成（Ajaxの戻り）
     public function getmaster(Request $request)
     {
-        $main_path = storage_path('app/main_images/');
+        $main_path = storage_path("app/main_images/");
         $image_file = Picture::find($request->img_id);
 
         if (!$image_file) {
-            return '';
+            return;
         }
 
-        $data = file_get_contents($main_path . $image_file->thumb_name);
-        $src = 'data:image/png;base64,' . base64_encode($data);
+        $p_info = pathinfo($image_file->file_name);
 
-        return '<img src="' . $src . '" class="w-100" title="' . $image_file->title . '">';
+        if ($p_info['extension'] == "png" || $p_info['extension'] == "PNG") {
+            $type = "data:image/png;base64,";
+        } else {
+            $type = "data:image/jpeg;base64,";
+        }
+
+        $data = file_get_contents($main_path . $image_file->file_name);
+        $src = $type . base64_encode($data);
+        $str = "<img src='{$src}' class='w-100' title='{$image_file->title}'>";
+
+        return $str;
     }
 
-    /**
-     * Ajax：タイトル保存
-     */
+    // 画像タイトル設定（Ajaxからの呼び出し）
     public function savetitle(Request $request)
     {
+        // dd($request->all());
         $image_file = Picture::find($request->save_id);
-        if ($image_file) {
-            $image_file->title = $request->title;
-            $image_file->save();
-        }
-        return response()->noContent();
+        $image_file->title = $request->title;
+        $image_file->save();
+
+        return;
     }
 
-    /**
-     * Ajax：画像削除
-     */
-    public function deletepic(Request $request)
+    // 画像削除（Ajaxからの呼び出し）
+    public function delete(Request $request)
     {
+        // dd($request->all());
         $image_file = Picture::find($request->delete_id);
-        if ($image_file) {
-            Storage::delete('main_images/' . $image_file->thumb_name);
-            Storage::delete('thumb_images/' . $image_file->thumb_name);
-            $image_file->delete();
-        }
-        return response()->noContent();
+        $main = $image_file->file_name;
+        $thumb = $image_file->thumb_name;
+
+        // ストレージからファイル削除
+        Storage::delete("main_images/" . $main);
+        Storage::delete("thumb_images/" . $thumb);
+
+        // DBレコード削除
+        Picture::destroy($request->delete_id);
+
+        return;
     }
 }

@@ -67,7 +67,8 @@ Route::middleware(['auth', 'verified'])->group(
         Route::post('/save_pics', [UserPicsController::class, 'savepics'])->name('pic.save');
 
         // Ajaxページネーション対応
-        Route::match(['get', 'post'], '/user_pics', [UserPicsController::class, 'getpics'])->name('user_pics');
+        // routes/web.php を以下のように修正
+        Route::post('/user_pics', [UserPicsController::class, 'getpics'])->name('user_pics');
 
         Route::post('/get_master', [UserPicsController::class, 'getmaster'])->name('pic.master');
         Route::post('/save_title', [UserPicsController::class, 'savetitle'])->name('pic.title');
