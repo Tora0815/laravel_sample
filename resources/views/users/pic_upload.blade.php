@@ -117,97 +117,100 @@
         <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
         <script>
-            var page_num = 0;
+            $(function() {
+                var page_num = 0;
 
-            // 初期読み込み時の処理
-            changeContents(0);
+                // 初期読み込み時の処理
+                changeContents(0);
 
-            function changeContents(num) {
-                page_num = num;
+                function changeContents(num) {
+                    page_num = num;
 
-                // 読み込み中はカーソルをwait状態に
-                document.body.style.cursor = 'wait';
+                    // 読み込み中はカーソルをwait状態に
+                    document.body.style.cursor = 'wait';
 
-                // CSRFトークンとユーザーIDを取得
-                let code = document.getElementsByName("_token").item(0).value;
-                let user_id = document.getElementsByName("u_id").item(0).value;
+                    // CSRFトークンとユーザーIDを取得
+                    let code = document.getElementsByName("_token").item(0).value;
+                    let user_id = document.getElementsByName("u_id").item(0).value;
 
-                // FormDataにCSRFトークンを追加
-                var fd = new FormData();
-                fd.append("_token", code);
-                {{-- 出典ページ：P156 --}}
-
+                    // FormDataにCSRFトークンを追加
+                    var fd = new FormData();
+                    fd.append("_token", code);
 
 
-                fd.append("page", num);
-                fd.append("u_id", user_id);
+                    {{-- 出典ページ：P156 --}}
 
-                // XHRで送信（jQuery Ajax）
-                $.ajax({
-                        url: "./user_pics",
-                        type: "POST",
-                        data: fd,
-                        dataType: "html",
-                        processData: false, // ファイルアップロードのためfalse
-                        contentType: false, // 同上
-                        timeout: 10000, // タイムアウト設定（ミリ秒）
 
-                        // 通信失敗時の処理
-                        error: function(XMLHttpRequest, textStatus, errorThrown) {
-                            alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
+                    fd.append("page", num);
+                    fd.append("u_id", user_id);
+
+                    // XHRで送信（jQuery Ajax）
+                    $.ajax({
+                            url: "./user_pics",
+                            type: "POST",
+                            data: fd,
+                            dataType: "html",
+                            processData: false, // ファイルアップロードのためfalse
+                            contentType: false, // 同上
+                            timeout: 10000, // タイムアウト設定（ミリ秒）
+
+                            // 通信失敗時の処理
+                            error: function(XMLHttpRequest, textStatus, errorThrown) {
+                                alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
+                                document.body.style.cursor = 'auto';
+                            },
+
+                            // 通信開始前の処理（ローディング表示などに利用可）
+                            beforeSend: function(xhr) {}
+                        })
+
+                        // 通信成功時の処理
+                        .done(function(res) {
                             document.body.style.cursor = 'auto';
-                        },
-
-                        // 通信開始前の処理（ローディング表示などに利用可）
-                        beforeSend: function(xhr) {}
-                    })
-
-                    // 通信成功時の処理
-                    .done(function(res) {
-                        document.body.style.cursor = 'auto';
-                        // console.log(res);
-                        $("#list_area").html(res); // 結果HTMLを表示
-                    });
-            }
-
-            // ファイルアップロードボタンが押されたら、ファイル選択inputをクリック
-            $("#file_up_bt").on("click", function(e) {
-                $("#select_file").trigger("click");
-            });
-
-            // ファイル選択時の処理（複数対応）
-            $("#select_file").on("change", function(e) {
-                $("#upload_dialog").dialog("open"); // ローディングダイアログを表示
-                for (var i = 0; i < e.target.files.length; i++) {
-                    var file = e.target.files[i];
-                    console.log(file.name); // デバッグ出力（省略可）
-                    uploadData(file, name); // アップロード処理呼び出し
+                            // console.log(res);
+                            $("#list_area").html(res); // 結果HTMLを表示
+                        });
                 }
 
-                // アップロード完了後に一覧更新・ダイアログ閉じ
-                changeContents(0);
-                $("#upload_dialog").dialog("close");
-            });
+                // ファイルアップロードボタンが押されたら、ファイル選択inputをクリック
+                $("#file_up_bt").on("click", function(e) {
+                    $("#select_file").trigger("click");
+                });
 
-            // ファイルアップロード処理（1ファイルごと）
-            function uploadData(file, name) {
-                // カーソルをwaitに設定（ユーザーに処理中と伝える）
-                document.body.style.cursor = 'wait';
+                // ファイル選択時の処理（複数対応）
+                $("#select_file").on("change", function(e) {
+                    console.log("ファイルが選択されました！");
+                    $("#upload_dialog").dialog("open"); // ローディングダイアログを表示
+                    for (var i = 0; i < e.target.files.length; i++) {
+                        var file = e.target.files[i];
+                        console.log(file.name); // デバッグ出力（省略可）
+                        uploadData(file, name); // アップロード処理呼び出し
+                    }
 
-                // CSRFトークンとユーザーIDを取得
-                let code = document.getElementsByName("_token").item(0).value;
-                let user_id = document.getElementsByName("u_id").item(0).value;
+                    // アップロード完了後に一覧更新・ダイアログ閉じ
+                    changeContents(0);
+                    $("#upload_dialog").dialog("close");
+                });
 
-                // FormDataオブジェクトを用意
-                var fd = new FormData();
-                fd.append("_token", code);
-                {{-- 出典ページ：P157 --}}
-                fd.append("name", name);
-                fd.append("upfile", file);
-                fd.append("u_id", user_id);
+                // ファイルアップロード処理（1ファイルごと）
+                // ファイルアップロード用関数
+                function uploadData(file, name) {
+                    // カーソルをwaitに設定（ユーザーに処理中と伝える）
+                    document.body.style.cursor = 'wait';
 
-                // XHR で送信
-                $.ajax({
+                    // CSRFトークンとユーザーIDを取得
+                    let code = document.getElementsByName("_token").item(0).value;
+                    let user_id = document.getElementsByName("u_id").item(0).value;
+
+                    // FormDataオブジェクトを用意
+                    var fd = new FormData();
+                    fd.append("_token", code);
+                    fd.append("name", name);
+                    fd.append("upfile", file);
+                    fd.append("u_id", user_id);
+
+                    // XHR で送信
+                    $.ajax({
                         url: "./save_pics",
                         type: "POST",
                         data: fd,
@@ -216,225 +219,229 @@
                         contentType: false,
                         async: false,
                         timeout: 10000, // 単位はミリ秒
-
-                        // エラー発生時の処理
                         error: function(XMLHttpRequest, textStatus, errorThrown) {
-                            alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
+                            alert("エラーが発生しました (status:" + XMLHttpRequest.status + ")");
                             document.body.style.cursor = 'auto';
                         },
-                        beforeSend: function(xhr) {}
-                    })
+                        beforeSend: function(xhr) {
+                            // 送信前に何かしたければここに書く（今回は空）
+                        },
+                        success: function(res) {
+                            document.body.style.cursor = 'auto';
+                            console.log("アップロード成功！");
+                            console.log(res);
 
-                    // 成功時の処理
-                    .done(function(res) {
-                        document.body.style.cursor = 'auto';
-                        // console.log(res);
-                        // message = message + "：" + res;
-                        // $("#message").html(message);
+                            // 成功後にファイルリスト再読み込み
+                            changeContents(0);
+                        }
                     });
-            }
-
-            // 削除ボタンクリック時の処理
-            $('#delete_bt').on('click', function(e) {
-                console.log(change_id);
-                $("#delete_dialog").dialog("open");
-            });
-
-            // タイトル設定ボタンクリック時の処理
-            $('#set_title_bt').on('click', function(e) {
-                console.log(change_id);
-                $("#dialog-form").dialog("open");
-            });
-
-            // 削除確認ダイアログの設定
-            $("#delete_dialog").dialog({
-                autoOpen: false,
-                resizable: false,
-                height: "auto",
-                width: "auto",
-                fluid: true,
-                modal: true,
-                buttons: {
-                    "削除する": function() {
-                        $(this).dialog("close");
-                        deleteFile();
-                    },
-                    "キャンセル": function() {
-                        {{-- 出典ページ：P158 --}}
-                        $(this).dialog("close");
-                    }
                 }
-            });
 
-            // アップロードダイアログ設定
-            $("#upload_dialog").dialog({
-                autoOpen: false,
-                resizable: false,
-                height: "auto",
-                width: "auto",
-                fluid: true,
-                modal: true,
-            });
 
-            // タイトル設定ダイアログ設定
-            $("#dialog-form").dialog({
-                autoOpen: false,
-                height: "auto",
-                width: 600,
-                modal: true,
-                buttons: {
-                    "保存": function() {
-                        $(this).dialog("close");
-                        saveTitle();
-                    },
-                    "キャンセル": function() {
-                        $(this).dialog("close");
+                // 削除ボタンクリック時の処理
+                $('#delete_bt').on('click', function(e) {
+                    console.log(change_id);
+                    $("#delete_dialog").dialog("open");
+                });
+
+                // タイトル設定ボタンクリック時の処理
+                $('#set_title_bt').on('click', function(e) {
+                    console.log(change_id);
+                    $("#dialog-form").dialog("open");
+                });
+
+                // 削除確認ダイアログの設定
+                $("#delete_dialog").dialog({
+                    autoOpen: false,
+                    resizable: false,
+                    height: "auto",
+                    width: "auto",
+                    fluid: true,
+                    modal: true,
+                    buttons: {
+                        "削除する": function() {
+                            $(this).dialog("close");
+                            deleteFile();
+                        },
+                        "キャンセル": function() {
+                            {{-- 出典ページ：P158 --}}
+
+
+                            $(this).dialog("close");
+                        }
                     }
+                });
+
+                // アップロードダイアログ設定
+                $("#upload_dialog").dialog({
+                    autoOpen: false,
+                    resizable: false,
+                    height: "auto",
+                    width: "auto",
+                    fluid: true,
+                    modal: true,
+                });
+
+                // タイトル設定ダイアログ設定
+                $("#dialog-form").dialog({
+                    autoOpen: false,
+                    height: "auto",
+                    width: 600,
+                    modal: true,
+                    buttons: {
+                        "保存": function() {
+                            $(this).dialog("close");
+                            saveTitle();
+                        },
+                        "キャンセル": function() {
+                            $(this).dialog("close");
+                        }
+                    }
+                });
+
+                // ファイル表示モーダル呼び出し（画像クリック時に実行）
+                var change_id = "";
+                $(document).on("click", ".show_modal_bt", function(e) {
+                    console.log("thumb click");
+
+                    // message = "";
+                    // $("#message").html(message);
+
+                    change_id = $(this).attr("value"); // 押下画像のIDを取得
+                    getMasterImage(change_id); // 画像情報を取得
+                });
+
+                // マスター画像データ取得処理
+                function getMasterImage(id) {
+                    // データ送信準備（カーソルをwaitに）
+                    document.body.style.cursor = "wait";
+
+                    // CSRFトークンとユーザーIDを取得
+                    let code = document.getElementsByName("_token").item(0).value;
+                    let user_id = document.getElementsByName("u_id").item(0).value;
+
+                    // FormDataオブジェクトを生成し、必要データを追加
+                    var fd = new FormData();
+                    fd.append("_token", code);
+                    fd.append("id", id);
+                    fd.append("u_id", user_id);
+                    {{-- 出典ページ：P159 --}}
+                    // XHR で送信（画像情報取得処理）
+                    $.ajax({
+                            url: "./get_master",
+                            type: "POST",
+                            data: fd,
+                            mode: "multiple",
+                            processData: false,
+                            contentType: false,
+                            async: false,
+                            timeout: 10000, // 単位はミリ秒
+
+                            error: function(XMLHttpRequest, textStatus, errorThrown) {
+                                alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
+                                document.body.style.cursor = "auto";
+                            },
+                            beforeSend: function(xhr) {}
+                        })
+
+                        .done(function(res) {
+                            document.body.style.cursor = "auto";
+                            // console.log(res);
+                            $("#set_title").val($(res).attr("title")); // タイトルを入力欄にセット
+                            $("#pic_title").html($(res).attr("title")); // タイトルを表示欄にセット
+                            $("#frame").html(res); // 画像HTMLをモーダルに表示
+                            $("#modal_bt").trigger("click"); // モーダル表示をトリガー
+                        });
                 }
-            });
 
-            // ファイル表示モーダル呼び出し（画像クリック時に実行）
-            var change_id = "";
-            $(document).on("click", ".show_modal_bt", function(e) {
-                console.log("thumb click");
+                // ファイル削除処理
+                function deleteFile() {
+                    console.log("delete");
 
-                // message = "";
-                // $("#message").html(message);
+                    // データ送信準備
+                    document.body.style.cursor = "wait";
+                    let code = document.getElementsByName("_token").item(0).value;
+                    let user_id = document.getElementsByName("u_id").item(0).value;
 
-                change_id = $(this).attr("value"); // 押下画像のIDを取得
-                getMasterImage(change_id); // 画像情報を取得
-            });
+                    // FormData オブジェクトにデータを追加
+                    var fd = new FormData();
+                    fd.append("_token", code);
+                    fd.append("delete_id", change_id);
+                    fd.append("u_id", user_id);
 
-            // マスター画像データ取得処理
-            function getMasterImage(id) {
-                // データ送信準備（カーソルをwaitに）
-                document.body.style.cursor = "wait";
+                    // XHR で送信（削除処理）
+                    $.ajax({
+                            url: "./delete_pic",
+                            type: "POST",
+                            data: fd,
+                            mode: "multiple",
+                            processData: false,
+                            contentType: false,
+                            timeout: 10000, // 単位はミリ秒
 
-                // CSRFトークンとユーザーIDを取得
-                let code = document.getElementsByName("_token").item(0).value;
-                let user_id = document.getElementsByName("u_id").item(0).value;
+                            error: function(XMLHttpRequest, textStatus, errorThrown) {
+                                alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
+                                document.body.style.cursor = "auto";
+                            },
+                            {{-- 出典ページ：P160 --}}
+                            beforeSend: function(xhr) {}
+                        })
 
-                // FormDataオブジェクトを生成し、必要データを追加
-                var fd = new FormData();
-                fd.append("_token", code);
-                fd.append("id", id);
-                fd.append("u_id", user_id);
-                {{-- 出典ページ：P159 --}}
-                // XHR で送信（画像情報取得処理）
-                $.ajax({
-                        url: "./get_master",
-                        type: "POST",
-                        data: fd,
-                        mode: "multiple",
-                        processData: false,
-                        contentType: false,
-                        async: false,
-                        timeout: 10000, // 単位はミリ秒
-
-                        error: function(XMLHttpRequest, textStatus, errorThrown) {
-                            alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
+                        .done(function(res) {
                             document.body.style.cursor = "auto";
-                        },
-                        beforeSend: function(xhr) {}
-                    })
+                            // console.log(res);
+                            // message = message + "：" + res;
+                            // $("#message").html(message);
+                            changeContents(page_num); // 一覧を再読込
+                        });
+                }
 
-                    .done(function(res) {
-                        document.body.style.cursor = "auto";
-                        // console.log(res);
-                        $("#set_title").val($(res).attr("title")); // タイトルを入力欄にセット
-                        $("#pic_title").html($(res).attr("title")); // タイトルを表示欄にセット
-                        $("#frame").html(res); // 画像HTMLをモーダルに表示
-                        $("#modal_bt").trigger("click"); // モーダル表示をトリガー
-                    });
-            }
+                // タイトル保存処理
+                function saveTitle() {
+                    console.log("delete");
 
-            // ファイル削除処理
-            function deleteFile() {
-                console.log("delete");
+                    // データ送信準備
+                    document.body.style.cursor = "wait";
+                    let code = document.getElementsByName("_token").item(0).value;
+                    let user_id = document.getElementsByName("u_id").item(0).value;
 
-                // データ送信準備
-                document.body.style.cursor = "wait";
-                let code = document.getElementsByName("_token").item(0).value;
-                let user_id = document.getElementsByName("u_id").item(0).value;
+                    // FormData オブジェクトを生成し、タイトル・IDを追加
+                    var fd = new FormData();
+                    fd.append("_token", code);
+                    fd.append("save_id", change_id);
+                    fd.append("title", $("#set_title").val());
+                    fd.append("u_id", user_id);
 
-                // FormData オブジェクトにデータを追加
-                var fd = new FormData();
-                fd.append("_token", code);
-                fd.append("delete_id", change_id);
-                fd.append("u_id", user_id);
+                    // XHRで送信（タイトル更新）
+                    $.ajax({
+                            url: "./save_title",
+                            type: "POST",
+                            data: fd,
+                            mode: "multiple",
+                            processData: false,
+                            contentType: false,
+                            timeout: 10000, // 単位はミリ秒
 
-                // XHR で送信（削除処理）
-                $.ajax({
-                        url: "./delete_pic",
-                        type: "POST",
-                        data: fd,
-                        mode: "multiple",
-                        processData: false,
-                        contentType: false,
-                        timeout: 10000, // 単位はミリ秒
+                            error: function(XMLHttpRequest, textStatus, errorThrown) {
+                                alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
+                                document.body.style.cursor = "auto";
+                            },
+                            beforeSend: function(xhr) {}
+                        })
 
-                        error: function(XMLHttpRequest, textStatus, errorThrown) {
-                            alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
+                        .done(function(res) {
                             document.body.style.cursor = "auto";
-                        },
-                        {{-- 出典ページ：P160 --}}
-                        beforeSend: function(xhr) {}
-                    })
+                            console.log(res);
+                        });
+                }
 
-                    .done(function(res) {
-                        document.body.style.cursor = "auto";
-                        // console.log(res);
-                        // message = message + "：" + res;
-                        // $("#message").html(message);
-                        changeContents(page_num); // 一覧を再読込
-                    });
-            }
-
-            // タイトル保存処理
-            function saveTitle() {
-                console.log("delete");
-
-                // データ送信準備
-                document.body.style.cursor = "wait";
-                let code = document.getElementsByName("_token").item(0).value;
-                let user_id = document.getElementsByName("u_id").item(0).value;
-
-                // FormData オブジェクトを生成し、タイトル・IDを追加
-                var fd = new FormData();
-                fd.append("_token", code);
-                fd.append("save_id", change_id);
-                fd.append("title", $("#set_title").val());
-                fd.append("u_id", user_id);
-
-                // XHRで送信（タイトル更新）
-                $.ajax({
-                        url: "./save_title",
-                        type: "POST",
-                        data: fd,
-                        mode: "multiple",
-                        processData: false,
-                        contentType: false,
-                        timeout: 10000, // 単位はミリ秒
-
-                        error: function(XMLHttpRequest, textStatus, errorThrown) {
-                            alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
-                            document.body.style.cursor = "auto";
-                        },
-                        beforeSend: function(xhr) {}
-                    })
-
-                    .done(function(res) {
-                        document.body.style.cursor = "auto";
-                        console.log(res);
-                    });
-            }
-
-            // ページ切り替え処理（ページネーション用）
-            $(document).on("click", ".page_bt", function(e) {
-                console.log("ページ切り替えクリック！");
-                var page_num = $(this).val();
-                console.log("選択されたページ番号:", page_num);
-                changeContents(page_num);
+                // ページ切り替え処理（ページネーション用）
+                $(document).on("click", ".page_bt", function(e) {
+                    console.log("ページ切り替えクリック！");
+                    var page_num = $(this).val();
+                    console.log("選択されたページ番号:", page_num);
+                    changeContents(page_num);
+                });
             });
         </script>
     </x-slot>

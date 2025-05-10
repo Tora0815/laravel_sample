@@ -5,16 +5,16 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Picture;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\ImageManagerStatic as Image;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+
 
 class UserPicsController extends Controller
 {
     // 画像をストレージに保存 + サムネイル保存
-    public function save_pics(Request $request)
+    public function savePics(Request $request)
     {
-        // dd($request->all());
-
-        // 画像形式チェック
+        // バリデーション（画像ファイルチェック）
         $params = $request->validate(
             [
             'upfile' => 'required|file|image|max:500000',
@@ -23,49 +23,58 @@ class UserPicsController extends Controller
 
         $file = $params['upfile'];
 
-        // 保存用ディレクトリ存在確認
-        if (!is_dir(storage_path("app/main_images"))) {
-            mkdir(storage_path("app/main_images"));
+        // 保存用ディレクトリ存在確認（なければ作成）
+        if (!is_dir(storage_path('app/main_images'))) {
+            mkdir(storage_path('app/main_images'), 0777, true);
+        }
+        if (!is_dir(storage_path('app/thumb_images'))) {
+            mkdir(storage_path('app/thumb_images'), 0777, true);
         }
 
-        if (!is_dir(storage_path("app/thumb_images"))) {
-            mkdir(storage_path("app/thumb_images"));
-        }
+        // Intervention Image v3対応：ドライバー指定が必須
+        $manager = new ImageManager(new Driver());
 
-        // パス定義
-        $main_path = "main_images";
-        $image_path = storage_path("app/main_images/");
-        $thumb_path = storage_path("app/thumb_images/");
-
-        // ファイル保存（ランダム名で保存）
-        $temp_name = $request->file('upfile')->store($main_path);
-        $f_info = getimagesize($file->getRealPath());
+        // ファイル名取得（ランダム名）
         $temp_name = $file->hashName();
 
-        // サムネイル作成（160x160固定サイズ）
-        Image::make($file)->resize(
-            160, 160, function ($constraint) {
-                $constraint->aspectRatio(); // アスペクト比保持
-            }
-        )->save($image_path . $temp_name);
+        // 元画像を保存
+        $file->storeAs('main_images', $temp_name);
 
-        $thumb_name = $f_info['filename'] . "_thumb." . $f_info['extension'];
-        // サムネイルを別サイズ（300x300）でも保存
-        Image::make($file)->resize(
-            300, 300, function ($constraint) {
-                $constraint->aspectRatio();
-            }
-        )->save($thumb_path . $thumb_name);
+        // パス定義
+        $main_path = storage_path('app/main_images/');
+        $thumb_path = storage_path('app/thumb_images/');
 
-        // DBに保存
-        $data = new Picture;
-        $data->u_id = $request->u_id;
-        $data->file_name = $f_info['basename'];
-        $data->thumb_name = $thumb_name;
-        $data->save();
+        // サムネイル（160x160）保存
+        $manager->read($file->getRealPath())
+            ->resize(
+                160, 160, function ($constraint) {
+                    $constraint->aspectRatio();
+                }
+            )
+        ->save($main_path . $temp_name);
 
-        return;
+        // サムネイル用ファイル名作成
+        $thumb_name = pathinfo($temp_name, PATHINFO_FILENAME) . '_thumb.' . pathinfo($temp_name, PATHINFO_EXTENSION);
+
+        // サムネイル（300x300）保存
+        $manager->read($file->getRealPath())
+            ->resize(
+                300, 300, function ($constraint) {
+                    $constraint->aspectRatio();
+                }
+            )
+        ->save($thumb_path . $thumb_name);
+
+        // データベースに登録
+        $picture = new Picture();
+        $picture->u_id = $request->u_id;
+        $picture->file_name = $temp_name;
+        $picture->thumb_name = $thumb_name;
+        $picture->save();
+
+        return response()->json(['message' => 'アップロード完了！']);
     }
+
 
         // サムネイルウィンドウ生成（Ajaxの戻り用）
     public function getpics(Request $request)
