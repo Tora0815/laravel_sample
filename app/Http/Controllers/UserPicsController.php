@@ -137,12 +137,16 @@ class UserPicsController extends Controller
     // 拡大表示用マスター画像生成（Ajaxの戻り）
     public function getmaster(Request $request)
     {
-        $main_path = storage_path("app/main_images/");
+
         $image_file = Picture::find($request->img_id);
 
-        if (!$image_file) {
-            return;
-        }
+        $data = file_get_contents(
+            storage_path("app/thumb_images/")
+            . $image_file->thumb_name
+        );
+        $src = 'data:image/jpeg;base64,'.base64_encode($data);
+        return response("<img src='{$src}' class='w-100' title='{$image_file->title}'>", 200)
+        ->header('Content-Type', 'text/html');
 
         $p_info = pathinfo($image_file->file_name);
 
@@ -155,8 +159,6 @@ class UserPicsController extends Controller
         $data = file_get_contents($main_path . $image_file->file_name);
         $src = $type . base64_encode($data);
         $str = "<img src='{$src}' class='w-100' title='{$image_file->title}'>";
-
-        return $str;
     }
 
     // 画像タイトル設定（Ajaxからの呼び出し）

@@ -48,7 +48,7 @@
             {{-- アップロード後のメッセージやファイル一覧表示領域 --}}
             <hr class="mt-3">
             <div class="col-12">ファイルリスト</div>
-            <div class="col-12" id="message">×</div>
+            <div class="col-12" id="message"></div>
 
             <div id="list_area"></div>
 
@@ -316,41 +316,62 @@
                     // データ送信準備（カーソルをwaitに）
                     document.body.style.cursor = "wait";
 
-                    // CSRFトークンとユーザーIDを取得
-                    let code = document.getElementsByName("_token").item(0).value;
-                    let user_id = document.getElementsByName("u_id").item(0).value;
+                    // ———— CSRFトークンの取得 ————
+                    // layout/app.blade.php の <head> に以下が必要です
+                    // <meta name="csrf-token" content="{{ csrf_token() }}">
+                    const token = document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute('content');
+                    console.log("▶ CSRF token:", token);
+
+                    // ———— ユーザーIDの取得 ————
+                    const user_id = document.getElementsByName("u_id")[0].value;
+                    console.log("▶ user_id:", user_id);
 
                     // FormDataオブジェクトを生成し、必要データを追加
-                    var fd = new FormData();
-                    fd.append("_token", code);
-                    fd.append("id", id);
+                    const fd = new FormData();
+                    fd.append("_token", token);
+                    fd.append("img_id",  id);
                     fd.append("u_id", user_id);
+
                     {{-- 出典ページ：P159 --}}
-                    // XHR で送信（画像情報取得処理）
+
+                    // ———— Ajax 呼び出し ————
                     $.ajax({
-                            url: "./get_master",
+                            url: "{{ route('pic.master') }}",
                             type: "POST",
                             data: fd,
-                            mode: "multiple",
+                            dataType: "html", // ← HTML（SVG／<img>タグ）として受け取る
+                            timeout: 10000,
                             processData: false,
                             contentType: false,
-                            async: false,
-                            timeout: 10000, // 単位はミリ秒
-
-                            error: function(XMLHttpRequest, textStatus, errorThrown) {
-                                alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
-                                document.body.style.cursor = "auto";
+                            beforeSend: function() {
+                                document.body.style.cursor = "wait";
                             },
-                            beforeSend: function(xhr) {}
+                            error: function(xhr) {
+                                console.error("✖ Ajax エラー", xhr.status, xhr.statusText);
+                                document.body.style.cursor = "auto";
+                            }
                         })
 
                         .done(function(res) {
+                            console.log("✓ HTML受信:", res);
+
+                            // 受け取った HTML をそのまま挿入すると SVG／<img> がレンダリングされます
+                            $("#frame").html(res);
+
+                            // title属性も拾ってセット
+                            const title = $("#frame").find("svg, img").attr("title") || "";
+                            $("#pic_title").text(title);
+                            $("#set_title").val(title);
+
+                            // モーダルを表示
+                            new bootstrap.Modal(
+                                document.getElementById('exampleModal')
+                            ).show();
+
                             document.body.style.cursor = "auto";
-                            // console.log(res);
-                            $("#set_title").val($(res).attr("title")); // タイトルを入力欄にセット
-                            $("#pic_title").html($(res).attr("title")); // タイトルを表示欄にセット
-                            $("#frame").html(res); // 画像HTMLをモーダルに表示
-                            $("#modal_bt").trigger("click"); // モーダル表示をトリガー
+
                         });
                 }
 
@@ -442,6 +463,23 @@
                     console.log("選択されたページ番号:", page_num);
                     changeContents(page_num);
                 });
+                // タイトル設定ボタンが押されたか確認
+                $(document).on("click", "#title_bt", function() {
+                    const newTitle = $("#set_title").val();
+                    console.log("▶ #title_bt がクリックされました。入力値 newTitle =", newTitle);
+                    // ここで Ajax 送信するなら…例:
+                    // updateTitleAjax(picId, newTitle);
+                });
+
+                // 削除ボタンが押されたか確認
+                $(document).on("click", "#delete_bt", function() {
+                    // 例として、モーダル内の <img data-pic-id="…"> から取得
+                    const picId = $("#frame img").data("pic-id");
+                    console.log("▶ #delete_bt がクリックされました。picId =", picId);
+                    // ここで Ajax 削除リクエストを投げるなら…例:
+                    // deletePicAjax(picId);
+                });
+                // ④ 追記ここまで
             });
         </script>
     </x-slot>
