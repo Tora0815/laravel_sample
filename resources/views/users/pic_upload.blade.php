@@ -123,6 +123,8 @@
                 // 初期読み込み時の処理
                 changeContents(0);
 
+                let currentPicId = null;
+
                 function changeContents(num) {
                     page_num = num;
 
@@ -136,11 +138,6 @@
                     // FormDataにCSRFトークンを追加
                     var fd = new FormData();
                     fd.append("_token", code);
-
-
-                    {{-- 出典ページ：P156 --}}
-
-
                     fd.append("page", num);
                     fd.append("u_id", user_id);
 
@@ -167,7 +164,6 @@
                         // 通信成功時の処理
                         .done(function(res) {
                             document.body.style.cursor = 'auto';
-                            // console.log(res);
                             $("#list_area").html(res); // 結果HTMLを表示
                         });
                 }
@@ -183,7 +179,6 @@
                     $("#upload_dialog").dialog("open"); // ローディングダイアログを表示
                     for (var i = 0; i < e.target.files.length; i++) {
                         var file = e.target.files[i];
-                        console.log(file.name); // デバッグ出力（省略可）
                         uploadData(file, name); // アップロード処理呼び出し
                     }
 
@@ -240,13 +235,12 @@
 
                 // 削除ボタンクリック時の処理
                 $('#delete_bt').on('click', function(e) {
-                    console.log(change_id);
+                    console.log("▶ #delete_bt clicked, currentPicId =", currentPicId);
                     $("#delete_dialog").dialog("open");
                 });
 
                 // タイトル設定ボタンクリック時の処理
                 $('#set_title_bt').on('click', function(e) {
-                    console.log(change_id);
                     $("#dialog-form").dialog("open");
                 });
 
@@ -260,13 +254,11 @@
                     modal: true,
                     buttons: {
                         "削除する": function() {
+                            console.log("▶ 削除確認ダイアログ: 削除する ボタン押下");
                             $(this).dialog("close");
                             deleteFile();
                         },
                         "キャンセル": function() {
-                            {{-- 出典ページ：P158 --}}
-
-
                             $(this).dialog("close");
                         }
                     }
@@ -300,15 +292,13 @@
                 });
 
                 // ファイル表示モーダル呼び出し（画像クリック時に実行）
-                var change_id = "";
+                var change_id = ""
                 $(document).on("click", ".show_modal_bt", function(e) {
-                    console.log("thumb click");
-
-                    // message = "";
-                    // $("#message").html(message);
-
-                    change_id = $(this).attr("value"); // 押下画像のIDを取得
-                    getMasterImage(change_id); // 画像情報を取得
+                    // 押下画像のIDを取得してグローバル変数にも保存
+                    const id = $(this).attr("value");
+                    currentPicId = id;
+                    console.log("▶ show_modal_bt clicked, currentPicId =", currentPicId);
+                    getMasterImage(id); // 画像情報を取得
                 });
 
                 // マスター画像データ取得処理
@@ -322,19 +312,15 @@
                     const token = document
                         .querySelector('meta[name="csrf-token"]')
                         .getAttribute('content');
-                    console.log("▶ CSRF token:", token);
 
                     // ———— ユーザーIDの取得 ————
                     const user_id = document.getElementsByName("u_id")[0].value;
-                    console.log("▶ user_id:", user_id);
 
                     // FormDataオブジェクトを生成し、必要データを追加
                     const fd = new FormData();
                     fd.append("_token", token);
-                    fd.append("img_id",  id);
+                    fd.append("img_id", id);
                     fd.append("u_id", user_id);
-
-                    {{-- 出典ページ：P159 --}}
 
                     // ———— Ajax 呼び出し ————
                     $.ajax({
@@ -355,10 +341,12 @@
                         })
 
                         .done(function(res) {
-                            console.log("✓ HTML受信:", res);
-
-                            // 受け取った HTML をそのまま挿入すると SVG／<img> がレンダリングされます
+                            // ① まずHTMLをモーダルに挿入
                             $("#frame").html(res);
+
+                            // ② 挿入後にdata-pic-idを読み取ってcurrentPicIdをセット
+                            currentPicId = $("#frame img").data("pic-id");
+                            console.log("▶ getMasterImage done, currentPicId =", currentPicId);
 
                             // title属性も拾ってセット
                             const title = $("#frame").find("svg, img").attr("title") || "";
@@ -377,45 +365,36 @@
 
                 // ファイル削除処理
                 function deleteFile() {
-                    console.log("delete");
+                    console.log("▶ deleteFile() called, delete_id =", currentPicId);
 
-                    // データ送信準備
-                    document.body.style.cursor = "wait";
-                    let code = document.getElementsByName("_token").item(0).value;
-                    let user_id = document.getElementsByName("u_id").item(0).value;
+                    // FormData の準備
+                    let fd = new FormData();
+                    fd.append("_token", $('meta[name="csrf-token"]').attr("content"));
+                    fd.append("delete_id", currentPicId);
 
-                    // FormData オブジェクトにデータを追加
-                    var fd = new FormData();
-                    fd.append("_token", code);
-                    fd.append("delete_id", change_id);
-                    fd.append("u_id", user_id);
+                    // FormData の中身を確認
+                    for (let [k, v] of fd.entries()) {
+                        console.log("   ● FormData →", k, "=", v);
+                    }
 
-                    // XHR で送信（削除処理）
+                    // AJAX 実行
                     $.ajax({
-                            url: "./delete_pic",
+                            url: "/delete_pic",
                             type: "POST",
                             data: fd,
-                            mode: "multiple",
                             processData: false,
                             contentType: false,
-                            timeout: 10000, // 単位はミリ秒
-
-                            error: function(XMLHttpRequest, textStatus, errorThrown) {
-                                alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
-                                document.body.style.cursor = "auto";
-                            },
-                            {{-- 出典ページ：P160 --}}
-                            beforeSend: function(xhr) {}
                         })
-
                         .done(function(res) {
-                            document.body.style.cursor = "auto";
-                            // console.log(res);
-                            // message = message + "：" + res;
-                            // $("#message").html(message);
-                            changeContents(page_num); // 一覧を再読込
+                            console.log("✔ 削除成功", res);
+                            changeContents(page_num);
+                        })
+                        .fail(function(xhr) {
+                            console.error("✖ 削除エラー", xhr.status, xhr.responseText);
+                            alert("削除に失敗しました");
                         });
                 }
+
 
                 // タイトル保存処理
                 function saveTitle() {
@@ -476,10 +455,8 @@
                     // 例として、モーダル内の <img data-pic-id="…"> から取得
                     const picId = $("#frame img").data("pic-id");
                     console.log("▶ #delete_bt がクリックされました。picId =", picId);
-                    // ここで Ajax 削除リクエストを投げるなら…例:
-                    // deletePicAjax(picId);
                 });
-                // ④ 追記ここまで
+
             });
         </script>
     </x-slot>
