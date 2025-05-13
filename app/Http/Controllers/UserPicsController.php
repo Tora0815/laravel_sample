@@ -163,6 +163,7 @@ class UserPicsController extends Controller
     // 画像タイトル設定（Ajaxからの呼び出し）
     public function savetitle(Request $request)
     {
+        \Log::debug('saveTitle called', $request->all());
         // dd($request->all());
         $image_file = Picture::find($request->save_id);
         $image_file->title = $request->title;

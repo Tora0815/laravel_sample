@@ -80,7 +80,7 @@
                         {{-- モーダルのフッター：操作用ボタン群（キャンセル・タイトル変更・削除） --}}
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                            <button type="button" id="title_bt" class="btn btn-info"
+                            <button type="button" id="set_title_bt" class="btn btn-info"
                                 data-bs-dismiss="modal">タイトル設定</button>
                             <button type="button" id="delete_bt" class="btn btn-danger"
                                 data-bs-dismiss="modal">削除</button>
@@ -175,7 +175,6 @@
 
                 // ファイル選択時の処理（複数対応）
                 $("#select_file").on("change", function(e) {
-                    console.log("ファイルが選択されました！");
                     $("#upload_dialog").dialog("open"); // ローディングダイアログを表示
                     for (var i = 0; i < e.target.files.length; i++) {
                         var file = e.target.files[i];
@@ -223,9 +222,6 @@
                         },
                         success: function(res) {
                             document.body.style.cursor = 'auto';
-                            console.log("アップロード成功！");
-                            console.log(res);
-
                             // 成功後にファイルリスト再読み込み
                             changeContents(0);
                         }
@@ -235,7 +231,6 @@
 
                 // 削除ボタンクリック時の処理
                 $('#delete_bt').on('click', function(e) {
-                    console.log("▶ #delete_bt clicked, currentPicId =", currentPicId);
                     $("#delete_dialog").dialog("open");
                 });
 
@@ -254,7 +249,6 @@
                     modal: true,
                     buttons: {
                         "削除する": function() {
-                            console.log("▶ 削除確認ダイアログ: 削除する ボタン押下");
                             $(this).dialog("close");
                             deleteFile();
                         },
@@ -297,7 +291,6 @@
                     // 押下画像のIDを取得してグローバル変数にも保存
                     const id = $(this).attr("value");
                     currentPicId = id;
-                    console.log("▶ show_modal_bt clicked, currentPicId =", currentPicId);
                     getMasterImage(id); // 画像情報を取得
                 });
 
@@ -335,7 +328,6 @@
                                 document.body.style.cursor = "wait";
                             },
                             error: function(xhr) {
-                                console.error("✖ Ajax エラー", xhr.status, xhr.statusText);
                                 document.body.style.cursor = "auto";
                             }
                         })
@@ -346,8 +338,6 @@
 
                             // ② 挿入後にdata-pic-idを読み取ってcurrentPicIdをセット
                             currentPicId = $("#frame img").data("pic-id");
-                            console.log("▶ getMasterImage done, currentPicId =", currentPicId);
-
                             // title属性も拾ってセット
                             const title = $("#frame").find("svg, img").attr("title") || "";
                             $("#pic_title").text(title);
@@ -365,8 +355,6 @@
 
                 // ファイル削除処理
                 function deleteFile() {
-                    console.log("▶ deleteFile() called, delete_id =", currentPicId);
-
                     // FormData の準備
                     let fd = new FormData();
                     fd.append("_token", $('meta[name="csrf-token"]').attr("content"));
@@ -374,7 +362,6 @@
 
                     // FormData の中身を確認
                     for (let [k, v] of fd.entries()) {
-                        console.log("   ● FormData →", k, "=", v);
                     }
 
                     // AJAX 実行
@@ -386,11 +373,8 @@
                             contentType: false,
                         })
                         .done(function(res) {
-                            console.log("✔ 削除成功", res);
-                            changeContents(page_num);
                         })
                         .fail(function(xhr) {
-                            console.error("✖ 削除エラー", xhr.status, xhr.responseText);
                             alert("削除に失敗しました");
                         });
                 }
@@ -398,7 +382,7 @@
 
                 // タイトル保存処理
                 function saveTitle() {
-                    console.log("delete");
+                    console.log("▶ saveTitle() called, change_id =", change_id, "newTitle =", $("#set_title").val());
 
                     // データ送信準備
                     document.body.style.cursor = "wait";
@@ -408,13 +392,13 @@
                     // FormData オブジェクトを生成し、タイトル・IDを追加
                     var fd = new FormData();
                     fd.append("_token", code);
-                    fd.append("save_id", change_id);
+                    fd.append("save_id", currentPicId);
                     fd.append("title", $("#set_title").val());
                     fd.append("u_id", user_id);
 
                     // XHRで送信（タイトル更新）
                     $.ajax({
-                            url: "./save_title",
+                            url:"{{ route('pic.title') }}",
                             type: "POST",
                             data: fd,
                             mode: "multiple",
@@ -431,21 +415,17 @@
 
                         .done(function(res) {
                             document.body.style.cursor = "auto";
-                            console.log(res);
                         });
                 }
 
                 // ページ切り替え処理（ページネーション用）
                 $(document).on("click", ".page_bt", function(e) {
-                    console.log("ページ切り替えクリック！");
                     var page_num = $(this).val();
-                    console.log("選択されたページ番号:", page_num);
                     changeContents(page_num);
                 });
                 // タイトル設定ボタンが押されたか確認
                 $(document).on("click", "#title_bt", function() {
                     const newTitle = $("#set_title").val();
-                    console.log("▶ #title_bt がクリックされました。入力値 newTitle =", newTitle);
                     // ここで Ajax 送信するなら…例:
                     // updateTitleAjax(picId, newTitle);
                 });
@@ -454,7 +434,6 @@
                 $(document).on("click", "#delete_bt", function() {
                     // 例として、モーダル内の <img data-pic-id="…"> から取得
                     const picId = $("#frame img").data("pic-id");
-                    console.log("▶ #delete_bt がクリックされました。picId =", picId);
                 });
 
             });
