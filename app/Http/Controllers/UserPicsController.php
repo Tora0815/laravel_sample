@@ -135,33 +135,35 @@ class UserPicsController extends Controller
     }
 
     // 拡大表示用マスター画像生成（Ajaxの戻り）
-    public function getmaster(Request $request)
+    public function getMaster(Request $request)
     {
-        $main_path = storage_path("app/main_images/");
+        //レコード取得
         $image_file = Picture::find($request->img_id);
-
-        if (!$image_file) {
-            return;
+        if (! $image_file) {
+            return response('Not Found', 404);
         }
 
-        $p_info = pathinfo($image_file->file_name);
+        //サムネイル画像の Base64 を作成
+        $thumbPath = storage_path("app/thumb_images/") . $image_file->thumb_name;
+        $data = file_get_contents($thumbPath);
+        $src = 'data:image/jpeg;base64,' . base64_encode($data);
 
-        if ($p_info['extension'] == "png" || $p_info['extension'] == "PNG") {
-            $type = "data:image/png;base64,";
-        } else {
-            $type = "data:image/jpeg;base64,";
-        }
+        //プレビュー用の <img> タグ（必ず preview-trigger と data-pic-id を付与）
+        $html = "<img
+        src='{$src}'
+        class='w-100 preview-trigger'
+        data-pic-id='{$image_file->id}'
+        title='{$image_file->title}'>";
 
-        $data = file_get_contents($main_path . $image_file->file_name);
-        $src = $type . base64_encode($data);
-        $str = "<img src='{$src}' class='w-100' title='{$image_file->title}'>";
-
-        return $str;
+        //レスポンスを返す
+        return response($html, 200)
+        ->header('Content-Type', 'text/html');
     }
 
     // 画像タイトル設定（Ajaxからの呼び出し）
     public function savetitle(Request $request)
     {
+        \Log::debug('saveTitle called', $request->all());
         // dd($request->all());
         $image_file = Picture::find($request->save_id);
         $image_file->title = $request->title;
@@ -171,20 +173,22 @@ class UserPicsController extends Controller
     }
 
     // 画像削除（Ajaxからの呼び出し）
-    public function delete(Request $request)
+    public function deletePics(Request $request)
     {
-        // dd($request->all());
-        $image_file = Picture::find($request->delete_id);
-        $main = $image_file->file_name;
-        $thumb = $image_file->thumb_name;
+        \Log::debug('deletePics called', $request->all());
+        $pic = Picture::find($request->delete_id);
+        if (! $pic) {
+            return response()->json(['error'=>'Not Found'], 404);
+        }
 
-        // ストレージからファイル削除
-        Storage::delete("main_images/" . $main);
-        Storage::delete("thumb_images/" . $thumb);
+        // ファイル削除
+        Storage::delete("main_images/{$pic->file_name}");
+        Storage::delete("thumb_images/{$pic->thumb_name}");
 
-        // DBレコード削除
-        Picture::destroy($request->delete_id);
+        // DB削除
+        $pic->delete();
 
-        return;
+        // JSONで成功レスポンス
+        return response()->json(['success'=>true]);
     }
 }

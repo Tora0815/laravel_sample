@@ -48,7 +48,7 @@
             {{-- アップロード後のメッセージやファイル一覧表示領域 --}}
             <hr class="mt-3">
             <div class="col-12">ファイルリスト</div>
-            <div class="col-12" id="message">×</div>
+            <div class="col-12" id="message"></div>
 
             <div id="list_area"></div>
 
@@ -80,7 +80,7 @@
                         {{-- モーダルのフッター：操作用ボタン群（キャンセル・タイトル変更・削除） --}}
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                            <button type="button" id="title_bt" class="btn btn-info"
+                            <button type="button" id="set_title_bt" class="btn btn-info"
                                 data-bs-dismiss="modal">タイトル設定</button>
                             <button type="button" id="delete_bt" class="btn btn-danger"
                                 data-bs-dismiss="modal">削除</button>
@@ -123,6 +123,8 @@
                 // 初期読み込み時の処理
                 changeContents(0);
 
+                let currentPicId = null;
+
                 function changeContents(num) {
                     page_num = num;
 
@@ -136,11 +138,6 @@
                     // FormDataにCSRFトークンを追加
                     var fd = new FormData();
                     fd.append("_token", code);
-
-
-                    {{-- 出典ページ：P156 --}}
-
-
                     fd.append("page", num);
                     fd.append("u_id", user_id);
 
@@ -167,7 +164,6 @@
                         // 通信成功時の処理
                         .done(function(res) {
                             document.body.style.cursor = 'auto';
-                            // console.log(res);
                             $("#list_area").html(res); // 結果HTMLを表示
                         });
                 }
@@ -179,11 +175,9 @@
 
                 // ファイル選択時の処理（複数対応）
                 $("#select_file").on("change", function(e) {
-                    console.log("ファイルが選択されました！");
                     $("#upload_dialog").dialog("open"); // ローディングダイアログを表示
                     for (var i = 0; i < e.target.files.length; i++) {
                         var file = e.target.files[i];
-                        console.log(file.name); // デバッグ出力（省略可）
                         uploadData(file, name); // アップロード処理呼び出し
                     }
 
@@ -228,9 +222,6 @@
                         },
                         success: function(res) {
                             document.body.style.cursor = 'auto';
-                            console.log("アップロード成功！");
-                            console.log(res);
-
                             // 成功後にファイルリスト再読み込み
                             changeContents(0);
                         }
@@ -240,13 +231,11 @@
 
                 // 削除ボタンクリック時の処理
                 $('#delete_bt').on('click', function(e) {
-                    console.log(change_id);
                     $("#delete_dialog").dialog("open");
                 });
 
                 // タイトル設定ボタンクリック時の処理
                 $('#set_title_bt').on('click', function(e) {
-                    console.log(change_id);
                     $("#dialog-form").dialog("open");
                 });
 
@@ -264,9 +253,6 @@
                             deleteFile();
                         },
                         "キャンセル": function() {
-                            {{-- 出典ページ：P158 --}}
-
-
                             $(this).dialog("close");
                         }
                     }
@@ -300,15 +286,12 @@
                 });
 
                 // ファイル表示モーダル呼び出し（画像クリック時に実行）
-                var change_id = "";
+                var change_id = ""
                 $(document).on("click", ".show_modal_bt", function(e) {
-                    console.log("thumb click");
-
-                    // message = "";
-                    // $("#message").html(message);
-
-                    change_id = $(this).attr("value"); // 押下画像のIDを取得
-                    getMasterImage(change_id); // 画像情報を取得
+                    // 押下画像のIDを取得してグローバル変数にも保存
+                    const id = $(this).attr("value");
+                    currentPicId = id;
+                    getMasterImage(id); // 画像情報を取得
                 });
 
                 // マスター画像データ取得処理
@@ -316,89 +299,90 @@
                     // データ送信準備（カーソルをwaitに）
                     document.body.style.cursor = "wait";
 
-                    // CSRFトークンとユーザーIDを取得
-                    let code = document.getElementsByName("_token").item(0).value;
-                    let user_id = document.getElementsByName("u_id").item(0).value;
+                    // ———— CSRFトークンの取得 ————
+                    // layout/app.blade.php の <head> に以下が必要です
+                    // <meta name="csrf-token" content="{{ csrf_token() }}">
+                    const token = document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute('content');
+
+                    // ———— ユーザーIDの取得 ————
+                    const user_id = document.getElementsByName("u_id")[0].value;
 
                     // FormDataオブジェクトを生成し、必要データを追加
-                    var fd = new FormData();
-                    fd.append("_token", code);
-                    fd.append("id", id);
+                    const fd = new FormData();
+                    fd.append("_token", token);
+                    fd.append("img_id", id);
                     fd.append("u_id", user_id);
-                    {{-- 出典ページ：P159 --}}
-                    // XHR で送信（画像情報取得処理）
+
+                    // ———— Ajax 呼び出し ————
                     $.ajax({
-                            url: "./get_master",
+                            url: "{{ route('pic.master') }}",
                             type: "POST",
                             data: fd,
-                            mode: "multiple",
+                            dataType: "html", // ← HTML（SVG／<img>タグ）として受け取る
+                            timeout: 10000,
                             processData: false,
                             contentType: false,
-                            async: false,
-                            timeout: 10000, // 単位はミリ秒
-
-                            error: function(XMLHttpRequest, textStatus, errorThrown) {
-                                alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
-                                document.body.style.cursor = "auto";
+                            beforeSend: function() {
+                                document.body.style.cursor = "wait";
                             },
-                            beforeSend: function(xhr) {}
+                            error: function(xhr) {
+                                document.body.style.cursor = "auto";
+                            }
                         })
 
                         .done(function(res) {
+                            // ① まずHTMLをモーダルに挿入
+                            $("#frame").html(res);
+
+                            // ② 挿入後にdata-pic-idを読み取ってcurrentPicIdをセット
+                            currentPicId = $("#frame img").data("pic-id");
+                            // title属性も拾ってセット
+                            const title = $("#frame").find("svg, img").attr("title") || "";
+                            $("#pic_title").text(title);
+                            $("#set_title").val(title);
+
+                            // モーダルを表示
+                            new bootstrap.Modal(
+                                document.getElementById('exampleModal')
+                            ).show();
+
                             document.body.style.cursor = "auto";
-                            // console.log(res);
-                            $("#set_title").val($(res).attr("title")); // タイトルを入力欄にセット
-                            $("#pic_title").html($(res).attr("title")); // タイトルを表示欄にセット
-                            $("#frame").html(res); // 画像HTMLをモーダルに表示
-                            $("#modal_bt").trigger("click"); // モーダル表示をトリガー
+
                         });
                 }
 
                 // ファイル削除処理
                 function deleteFile() {
-                    console.log("delete");
+                    // FormData の準備
+                    let fd = new FormData();
+                    fd.append("_token", $('meta[name="csrf-token"]').attr("content"));
+                    fd.append("delete_id", currentPicId);
 
-                    // データ送信準備
-                    document.body.style.cursor = "wait";
-                    let code = document.getElementsByName("_token").item(0).value;
-                    let user_id = document.getElementsByName("u_id").item(0).value;
+                    // FormData の中身を確認
+                    for (let [k, v] of fd.entries()) {
+                    }
 
-                    // FormData オブジェクトにデータを追加
-                    var fd = new FormData();
-                    fd.append("_token", code);
-                    fd.append("delete_id", change_id);
-                    fd.append("u_id", user_id);
-
-                    // XHR で送信（削除処理）
+                    // AJAX 実行
                     $.ajax({
-                            url: "./delete_pic",
+                            url: "/delete_pic",
                             type: "POST",
                             data: fd,
-                            mode: "multiple",
                             processData: false,
                             contentType: false,
-                            timeout: 10000, // 単位はミリ秒
-
-                            error: function(XMLHttpRequest, textStatus, errorThrown) {
-                                alert("err:" + XMLHttpRequest.status + "\n" + XMLHttpRequest.statusText);
-                                document.body.style.cursor = "auto";
-                            },
-                            {{-- 出典ページ：P160 --}}
-                            beforeSend: function(xhr) {}
                         })
-
                         .done(function(res) {
-                            document.body.style.cursor = "auto";
-                            // console.log(res);
-                            // message = message + "：" + res;
-                            // $("#message").html(message);
-                            changeContents(page_num); // 一覧を再読込
+                        })
+                        .fail(function(xhr) {
+                            alert("削除に失敗しました");
                         });
                 }
 
+
                 // タイトル保存処理
                 function saveTitle() {
-                    console.log("delete");
+                    console.log("▶ saveTitle() called, change_id =", change_id, "newTitle =", $("#set_title").val());
 
                     // データ送信準備
                     document.body.style.cursor = "wait";
@@ -408,13 +392,13 @@
                     // FormData オブジェクトを生成し、タイトル・IDを追加
                     var fd = new FormData();
                     fd.append("_token", code);
-                    fd.append("save_id", change_id);
+                    fd.append("save_id", currentPicId);
                     fd.append("title", $("#set_title").val());
                     fd.append("u_id", user_id);
 
                     // XHRで送信（タイトル更新）
                     $.ajax({
-                            url: "./save_title",
+                            url:"{{ route('pic.title') }}",
                             type: "POST",
                             data: fd,
                             mode: "multiple",
@@ -431,17 +415,27 @@
 
                         .done(function(res) {
                             document.body.style.cursor = "auto";
-                            console.log(res);
                         });
                 }
 
                 // ページ切り替え処理（ページネーション用）
                 $(document).on("click", ".page_bt", function(e) {
-                    console.log("ページ切り替えクリック！");
                     var page_num = $(this).val();
-                    console.log("選択されたページ番号:", page_num);
                     changeContents(page_num);
                 });
+                // タイトル設定ボタンが押されたか確認
+                $(document).on("click", "#title_bt", function() {
+                    const newTitle = $("#set_title").val();
+                    // ここで Ajax 送信するなら…例:
+                    // updateTitleAjax(picId, newTitle);
+                });
+
+                // 削除ボタンが押されたか確認
+                $(document).on("click", "#delete_bt", function() {
+                    // 例として、モーダル内の <img data-pic-id="…"> から取得
+                    const picId = $("#frame img").data("pic-id");
+                });
+
             });
         </script>
     </x-slot>

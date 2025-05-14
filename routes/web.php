@@ -72,6 +72,6 @@ Route::middleware(['auth', 'verified'])->group(
 
         Route::post('/get_master', [UserPicsController::class, 'getmaster'])->name('pic.master');
         Route::post('/save_title', [UserPicsController::class, 'savetitle'])->name('pic.title');
-        Route::post('/delete_pic', [UserPicsController::class, 'deletepic'])->name('pic.delete');
+        Route::post('/delete_pic', [UserPicsController::class, 'deletePics'])->name('delete_pic');
     }
 );
