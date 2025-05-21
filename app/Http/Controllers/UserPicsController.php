@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Picture;
-use Illuminate\Support\Facades\Storage;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
@@ -14,16 +14,20 @@ class UserPicsController extends Controller
     // 画像をストレージに保存 + サムネイル保存
     public function savePics(Request $request)
     {
-        // バリデーション（画像ファイルチェック）
+        $user_id = Auth::id();
+        if (!$user_id) {
+            return response()->json(['message' => 'ログインが必要です'], 401);
+        }
+
         $params = $request->validate(
             [
-            'upfile' => 'required|file|image|max:500000',
+            'upload_file' => 'required|file|image|max:500000',
             ]
         );
 
-        $file = $params['upfile'];
+        $file = $params['upload_file'];
 
-        // 保存用ディレクトリ存在確認（なければ作成）
+        // 保存ディレクトリを作成（なければ）
         if (!is_dir(storage_path('app/main_images'))) {
             mkdir(storage_path('app/main_images'), 0777, true);
         }
@@ -31,49 +35,52 @@ class UserPicsController extends Controller
             mkdir(storage_path('app/thumb_images'), 0777, true);
         }
 
-        // Intervention Image v3対応：ドライバー指定が必須
-        $manager = new ImageManager(new Driver());
+        try {
+            $manager = new ImageManager(new Driver());
 
-        // ファイル名取得（ランダム名）
-        $temp_name = $file->hashName();
+            $temp_name = $file->hashName();
 
-        // 元画像を保存
-        $file->storeAs('main_images', $temp_name);
+            // 元画像を保存
+            $file->storeAs('main_images', $temp_name);
 
-        // パス定義
-        $main_path = storage_path('app/main_images/');
-        $thumb_path = storage_path('app/thumb_images/');
+            $main_path = storage_path('app/main_images/');
+            $thumb_path = storage_path('app/thumb_images/');
 
-        // サムネイル（160x160）保存
-        $manager->read($file->getRealPath())
-            ->resize(
-                160, 160, function ($constraint) {
-                    $constraint->aspectRatio();
-                }
-            )
-        ->save($main_path . $temp_name);
+            // サムネイル（160x160）
+            $manager->read($file->getRealPath())
+                ->resize(
+                    160, 160, function ($constraint) {
+                        $constraint->aspectRatio();
+                    }
+                )
+                ->save($main_path . $temp_name);
 
-        // サムネイル用ファイル名作成
-        $thumb_name = pathinfo($temp_name, PATHINFO_FILENAME) . '_thumb.' . pathinfo($temp_name, PATHINFO_EXTENSION);
+            $thumb_name = pathinfo($temp_name, PATHINFO_FILENAME) . '_thumb.' . pathinfo($temp_name, PATHINFO_EXTENSION);
 
-        // サムネイル（300x300）保存
-        $manager->read($file->getRealPath())
-            ->resize(
-                300, 300, function ($constraint) {
-                    $constraint->aspectRatio();
-                }
-            )
-        ->save($thumb_path . $thumb_name);
+            // サムネイル（300x300）
+            $manager->read($file->getRealPath())
+                ->resize(
+                    300, 300, function ($constraint) {
+                        $constraint->aspectRatio();
+                    }
+                )
+                ->save($thumb_path . $thumb_name);
 
-        // データベースに登録
-        $picture = new Picture();
-        $picture->u_id = $request->u_id;
-        $picture->file_name = $temp_name;
-        $picture->thumb_name = $thumb_name;
-        $picture->save();
+            // DB保存
+            $picture = new Picture();
+            $picture->u_id = $user_id;
+            $picture->file_name = $temp_name;
+            $picture->thumb_name = $thumb_name;
+            $picture->title = '';
+            $picture->save();
 
-        return response()->json(['message' => 'アップロード完了！']);
+            return response()->json(['message' => 'アップロード完了！']);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => '画像アップロード中にエラーが発生しました'], 500);
+        }
     }
+
 
 
         // サムネイルウィンドウ生成（Ajaxの戻り用）
@@ -176,19 +183,31 @@ class UserPicsController extends Controller
     public function deletePics(Request $request)
     {
         \Log::debug('deletePics called', $request->all());
+
         $pic = Picture::find($request->delete_id);
         if (! $pic) {
-            return response()->json(['error'=>'Not Found'], 404);
+            return response()->json(['error' => 'Not Found'], 404);
         }
 
-        // ファイル削除
-        Storage::delete("main_images/{$pic->file_name}");
-        Storage::delete("thumb_images/{$pic->thumb_name}");
+        // storage/app 配下のフルパスでファイル削除
+        $main_path = storage_path("app/main_images/{$pic->file_name}");
+        $thumb_path = storage_path("app/thumb_images/{$pic->thumb_name}");
+
+        if (file_exists($main_path)) {
+            unlink($main_path);
+            \Log::info("削除成功: $main_path");
+        }
+
+        if (file_exists($thumb_path)) {
+            unlink($thumb_path);
+            \Log::info("削除成功: $thumb_path");
+        }
 
         // DB削除
         $pic->delete();
+        \Log::info("DBレコード削除: picture_id={$pic->id}");
 
-        // JSONで成功レスポンス
-        return response()->json(['success'=>true]);
+        return response()->json(['success' => true]);
     }
+
 }

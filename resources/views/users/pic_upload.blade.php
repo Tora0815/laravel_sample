@@ -200,7 +200,7 @@
                     var fd = new FormData();
                     fd.append("_token", code);
                     fd.append("name", name);
-                    fd.append("upfile", file);
+                    fd.append("upload_file", file);
                     fd.append("u_id", user_id);
 
                     // XHR で送信
@@ -361,8 +361,7 @@
                     fd.append("delete_id", currentPicId);
 
                     // FormData の中身を確認
-                    for (let [k, v] of fd.entries()) {
-                    }
+                    for (let [k, v] of fd.entries()) {}
 
                     // AJAX 実行
                     $.ajax({
@@ -373,6 +372,10 @@
                             contentType: false,
                         })
                         .done(function(res) {
+                            alert("削除に成功しました");
+                            changeContents(0); // 一覧を再読み込み（画像リスト更新）
+                            currentPicId = null; // 削除済みIDをクリアする ← これが重要！
+                            $("#exampleModal").modal("hide"); // モーダルを閉じる（必要であれば）
                         })
                         .fail(function(xhr) {
                             alert("削除に失敗しました");
@@ -398,7 +401,7 @@
 
                     // XHRで送信（タイトル更新）
                     $.ajax({
-                            url:"{{ route('pic.title') }}",
+                            url: "{{ route('pic.title') }}",
                             type: "POST",
                             data: fd,
                             mode: "multiple",
