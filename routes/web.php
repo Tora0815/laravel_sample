@@ -28,7 +28,7 @@ Route::view('/inquiry', 'contents.inquiry')->name('inquiry');
  * 公開アルバム関連（画像表示・取得用Ajax）
  */
 Route::post('/show_album', [PageController::class, 'showAlbum']);
-Route::post('/show_pics', [PageController::class, 'getpics']);
+Route::post('/show_pics', [UserPicsController::class, 'getpics'])->name('show_pics');
 Route::post('/pic_up', [PageController::class, 'getmaster']);
 Route::get('/show_album', fn () => redirect('/')); // POST誤アクセス対策
 

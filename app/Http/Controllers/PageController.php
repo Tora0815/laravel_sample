@@ -67,8 +67,9 @@ class PageController extends Controller
             ->get();
 
         if (count($file_list) < 1) {
-            return;
+            return response("<p class='text-center text-danger'>画像が登録されていません</p>");
         }
+
 
         $page_array = array();
         $array_count = 0;
@@ -85,21 +86,26 @@ class PageController extends Controller
 
         $data_list = array();
         foreach ($page_array[$page_num] as $file) {
-            $thumb = file_get_contents(storage_path('app/thumb_images/') . $file->thumb_name);
-            $p_info = pathinfo($file->thumb_name);
+            $thumb_path = storage_path('app/thumb_images/') . $file->thumb_name;
 
-            if ($p_info['extension'] == 'png' || $p_info['extension'] == 'PNG') {
-                $type = "data:image/png;base64,";
-            } else {
-                $type = "data:image/jpeg;base64,";
+            if (!file_exists($thumb_path)) {
+                continue; // ファイルがなければスキップ
             }
 
-            $data_list[] = array(
+            $thumb = file_get_contents($thumb_path);
+            $p_info = pathinfo($file->thumb_name);
+
+            $type = ($p_info['extension'] === 'png' || $p_info['extension'] === 'PNG')
+                ? "data:image/png;base64,"
+                : "data:image/jpeg;base64,";
+
+            $data_list[] = [
                 'id' => $file->id,
                 'img' => $type . base64_encode($thumb),
-                'title' => $file->title
-            );
+                'title' => $file->title ?? '（タイトルなし）', // ← NULL対策
+            ];
         }
+
 
         $tab_count = count($page_array);
 

@@ -1,9 +1,9 @@
 {{--
     ファイル: resources/views/contents/album.blade.php
     目的:
-      - 指定ユーザーのアルバム一覧を表示するページ
-      - モーダルを使った画像詳細表示
-      - Ajaxを使ってサムネイル一覧・ページングを動的にロードする
+    - 指定ユーザーのアルバム一覧を表示するページ
+    - モーダルを使った画像詳細表示
+    - Ajaxを使ってサムネイル一覧・ページングを動的にロードする
 --}}
 
 <x-page-base>
@@ -59,103 +59,117 @@
 
     {{-- ページ専用JavaScript --}}
     <x-slot name="script">
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script>
-            // 現在のページ番号
-            var page_num = 0;
+            $(function() {
+                // 現在表示中のページ番号（ページング用）
+                var page_num = 0;
 
-            /**
-             * サムネイル一覧をAjaxで読み込む
-             */
-            function changeContents(num) {
-                page_num = num;
-                document.body.style.cursor = 'wait';
+                // モーダル表示対象の画像ID（グローバルに保持）
+                var change_id = 0;
 
-                let code = document.getElementsByName("_token")[0].value;
-                let user_id = $("#u_id").html();
+                /**
+                 * サムネイル一覧をAjaxで取得して表示する処理
+                 * @param {int} num - ページ番号（0から始まる）
+                 */
+                function changeContents(num) {
+                    page_num = num;
+                    document.body.style.cursor = 'wait'; // ローディング中にカーソル変更
 
-                var fd = new FormData();
-                fd.append("_token", code);
-                fd.append("page", num);
-                fd.append("u_id", user_id);
+                    // CSRFトークンと対象ユーザーIDを取得
+                    let code = $('meta[name="csrf-token"]').attr('content');
+                    let user_id = $("#u_id").html();
 
-                $.ajax({
-                    url: "./show_pics",
-                    type: "POST",
-                    data: fd,
-                    mode: "multiple",
-                    processData: false,
-                    contentType: false,
-                    async: false,
-                    timeout: 10000,
-                    error: function(XMLHttpRequest, textStatus, errorThrown) {
-                        alert(errorThrown);
-                        document.body.style.cursor = 'auto';
-                    },
-                    beforeSend: function(xhr) {},
-                    success: function(res) {
-                        document.body.style.cursor = 'auto';
-                        $("#list_area").html(res);
-                    }
+                    // Ajax送信用のFormData作成
+                    var fd = new FormData();
+                    fd.append("_token", code);
+                    fd.append("page", num);
+                    fd.append("u_id", user_id);
+
+                    // Ajaxで画像一覧を取得
+                    $.ajax({
+                        url: "./show_pics", // Laravelルートと一致させる
+                        type: "POST",
+                        data: fd,
+                        mode: "multiple",
+                        processData: false,
+                        contentType: false,
+                        async: false,
+                        timeout: 10000,
+                        error: function(XMLHttpRequest, textStatus, errorThrown) {
+                            alert(errorThrown); // 通信エラー表示
+                            document.body.style.cursor = 'auto';
+                        },
+                        success: function(res) {
+                            document.body.style.cursor = 'auto';
+                            $("#list_area").html(res); // サムネイルHTMLを埋め込み
+                        }
+                    });
+                }
+
+                /**
+                 * サムネイル画像がクリックされたときの処理
+                 * モーダル表示のため、画像IDを記録して取得処理へ
+                 */
+                $(document).on("click", ".show_modal_bt", function(e) {
+                    change_id = $(this).attr('value'); // 画像IDを取得
+                    getMasterImage(change_id); // マスター画像取得
                 });
-            }
 
-            // クリックされた画像IDを保持するための変数
-            var change_id = 0;
+                /**
+                 * 指定された画像のマスター画像データを取得し、モーダルに表示
+                 * @param {int} id - 対象画像のID
+                 */
+                function getMasterImage(id) {
+                    document.body.style.cursor = 'wait';
 
-            /**
-             * サムネイル画像クリック時にモーダル呼び出し
-             */
-            $(document).on("click", ".show_modal_bt", function(e) {
-                change_id = $(this).attr('value');
-                getMasterImage(change_id);
-            });
+                    let code = $('meta[name="csrf-token"]').attr('content');
+                    let user_id = $("#u_id").html();
 
-            /**
-             * クリックされた画像の詳細データ（マスター画像）を取得してモーダル表示
-             */
-            function getMasterImage(id) {
-                document.body.style.cursor = 'wait';
+                    var fd = new FormData();
+                    fd.append("_token", code);
+                    fd.append("img_id", id);
+                    fd.append("u_id", user_id);
 
-                let code = document.getElementsByName("_token")[0].value;
-                let user_id = $("#u_id").html();
+                    // Ajaxでマスター画像を取得（HTML形式）
+                    $.ajax({
+                        url: "./pic_up",
+                        type: "POST",
+                        data: fd,
+                        mode: "multiple",
+                        processData: false,
+                        contentType: false,
+                        async: false,
+                        timeout: 10000,
+                        error: function(XMLHttpRequest, textStatus, errorThrown) {
+                            alert(errorThrown);
+                            document.body.style.cursor = 'auto';
+                        },
+                        success: function(res) {
+                            document.body.style.cursor = 'auto';
 
-                var fd = new FormData();
-                fd.append("_token", code);
-                fd.append("img_id", id);
-                fd.append("u_id", user_id);
+                            // resに含まれるtitle属性を取得・表示
+                            $("#set_title").val($(res).attr('title'));
+                            $("#f_name").html($(res).attr('title'));
+                            $("#pic_title").html($(res).attr('title'));
 
-                $.ajax({
-                    url: "./pic_up",
-                    type: "POST",
-                    data: fd,
-                    mode: "multiple",
-                    processData: false,
-                    contentType: false,
-                    async: false,
-                    timeout: 10000,
-                    error: function(XMLHttpRequest, textStatus, errorThrown) {
-                        alert(errorThrown);
-                        document.body.style.cursor = 'auto';
-                    },
-                    success: function(res) {
-                        document.body.style.cursor = 'auto';
-                        $("#set_title").val($(res).attr('title'));
-                        $("#f_name").html($(res).attr('title'));
-                        $("#pic_title").html($(res).attr('title'));
-                        $("#modal_bt").trigger("click");
-                    }
+                            // 非表示ボタンをトリガーしてモーダル表示
+                            $("#modal_bt").trigger("click");
+                        }
+                    });
+                }
+
+                /**
+                 * ページ番号ボタンが押されたら、changeContents()を再実行
+                 */
+                $(document).on("click", ".page_bt", function(e) {
+                    changeContents($(this).val());
                 });
-            }
 
-            /**
-             * ページ切り替えボタンクリック時の処理
-             */
-            $(document).on("click", ".page_bt", function(e) {
-                changeContents($(this).val());
+                // ページ表示時に最初の一覧（ページ0）を読み込む
+                changeContents(0);
             });
-
-            // ページ初期ロード時に最初のデータを読み込む
-            changeContents(0);
         </script>
     </x-slot>
+
 </x-page-base>
